@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>R-monie : lecteur de modèle SysML v2</title>
+<link rel="icon" href="/lib/logo_rm.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/modele.css">
+<link rel="stylesheet" href="/theme.css">
+<style>
+  @font-face{font-family:"Encode Sans R";src:url("/lib/encode-sans.woff2") format("woff2");font-weight:100 900;font-stretch:75% 125%;font-display:swap}
+  :root{
+    --nuit:#1D0A10; --rubis:#E8546C; --grenat:#6E1734;
+    --fond:#F4F2F3; --carte:#ffffff; --texte:#241A1D; --doux:#6B5F63; --ligne:#E3DCDF; --ligne-forte:#CFC5C9;
+    --accent:var(--grenat); --accent-doux:#F4E7EB;
+    --ok:#1e7f47; --ok-doux:#e4f4ea; --att:#a35f00; --att-doux:#fcf1dc; --err:#c0392b; --err-doux:#fbe9e7;
+    --gris-doux:#EEEAEC;
+    --police:"NouvelR","Nouvel R","Encode Sans R","Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+    --mono: ui-monospace, "Cascadia Mono", Consolas, "Courier New", monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.5 var(--police);background:var(--fond);color:var(--texte)}
+  code{font-family:var(--mono);font-size:12.5px}
+  .tete{background:var(--nuit);color:#FBF3F5}
+  .tete .dedans,main{max-width:none;margin:0;padding:0 24px}      /* toute la largeur de la fenêtre */
+  .tete .dedans{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-top:14px;padding-bottom:14px}
+  .marque{display:flex;align-items:center;gap:10px;margin:0;font-size:20px;font-weight:680;font-stretch:118%}
+  .marque svg{width:20px;height:18px;fill:none;stroke:var(--rubis);stroke-width:2.4;stroke-linecap:round}
+  .marque span{font-weight:400;font-size:15px;color:#d9c3ca;font-stretch:100%}
+  .tete a{color:#F0D3DB;font-size:14px}
+  main{padding-top:20px;padding-bottom:40px}
+  .carte{background:var(--carte);border:1px solid var(--ligne);border-radius:10px;padding:18px 20px}
+  .carte h2{margin:0 0 6px;font-size:19px}
+  .carte p{margin:0 0 14px;color:var(--doux)}
+</style>
+</head>
+<body>
+<header class="tete"><div class="dedans">
+  <p class="marque"><img class="marque-rm" src="/lib/logo_rm.svg" alt=""><img class="marque-texte" src="/lib/logo_texte_fond_sombre.svg" alt="R-monie"> <span>lecteur de modèle SysML v2</span></p>
+  <a href="/">Revenir au traducteur</a>
+</div></header>
+<main>
+  <section class="carte" id="accueil">
+    <h2>Ouvrir des codes SysML v2</h2>
+    <p>Les codes <code>.sysml</code> produits par le traducteur (dossier <code>sortie</code>), un ou plusieurs à la fois, par exemple les 4 cas d'usage.
+      Ils sont lus sur ce PC par le serveur local ; rien ne part sur Internet.</p>
+    <div class="mo mo-depot" id="depot" role="button" tabindex="0" aria-label="Choisir des fichiers .sysml">
+      <b>Choisir des fichiers .sysml</b>ou les déposer ici
+    </div>
+    <input type="file" id="entree" accept=".sysml" multiple hidden>
+  </section>
+  <div id="zone"></div>
+</main>
+<script src="/modele.js"></script>
+<script src="/outils.js"></script>
+<script>
+  const zone = document.getElementById("zone"), accueil = document.getElementById("accueil");
+  const depot = document.getElementById("depot"), entree = document.getElementById("entree");
+  function montrer(options){ accueil.hidden = true; zone.className = "carte"; RMonieModele.monter(zone, options); }
+  async function ouvrir(fs){
+    fs = [...fs].filter(f => /\.sysml$/i.test(f.name));
+    if (!fs.length){ alert("Choisir des fichiers .sysml"); return; }
+    montrer({fichiers: await Promise.all(fs.map(async f => ({nom: f.name, texte: await f.text()})))});
+  }
+  depot.addEventListener("click", () => entree.click());
+  depot.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); entree.click(); } });
+  entree.addEventListener("change", () => entree.files.length && ouvrir(entree.files));
+  ["dragenter", "dragover"].forEach(t => depot.addEventListener(t, e => { e.preventDefault(); depot.classList.add("survol"); }));
+  ["dragleave", "drop"].forEach(t => depot.addEventListener(t, e => { e.preventDefault(); depot.classList.remove("survol"); }));
+  depot.addEventListener("drop", e => ouvrir(e.dataTransfer.files));
+  const jeton = new URLSearchParams(location.search).get("jeton");
+  if (jeton) montrer({jeton});
+</script>
+</body>
+</html>

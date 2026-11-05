@@ -1,0 +1,9 @@
+# Assistant IA avec une clé API (facultatif : Claude via Claude Code marche sans clé).
+# 1. Copier ce fichier et renommer la copie en  cle_api.txt  (même dossier).
+# 2. Remplacer ta_clé_ici par ta propre clé (ex. clé Groq gratuite : https://console.groq.com/keys).
+# 3. Relancer lancer_interface.bat.
+# Ne jamais partager cle_api.txt (chat, mail, GitHub) : c'est un mot de passe.
+
+cle = ta_clé_ici
+url = https://api.groq.com/openai/v1/chat/completions
+modele = openai/gpt-oss-120b

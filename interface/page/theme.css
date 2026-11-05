@@ -1,0 +1,164 @@
+/* =====================================================================================
+   Charte R-monie (5 nov. 2026), reprise de la présentation Eq904 : logo RM vectorisé,
+   Space Grotesk pour les titres, IBM Plex Sans pour le texte (polices libres, licence OFL),
+   nuit #1A0B0E, rubis #E8546C, grenat #6E1734, gris clair #EEEAEC.
+   Repères de la charte : étiquettes en capitales espacées rubis (« 01. CONTEXTE »), trait rubis
+   sous les titres, cartes à coins arrondis et filet fin. Fond clair pour le contenu, bandeau sombre.
+   Ce fichier ne fait que surcharger l'apparence de index.html : le supprimer rend l'ancien style.
+   ===================================================================================== */
+@font-face{font-family:"Space Grotesk";src:url("/lib/space-grotesk-latin-500-normal.woff2") format("woff2");font-weight:500;font-display:swap}
+@font-face{font-family:"Space Grotesk";src:url("/lib/space-grotesk-latin-700-normal.woff2") format("woff2");font-weight:600 800;font-display:swap}
+@font-face{font-family:"IBM Plex Sans";src:url("/lib/ibm-plex-sans-latin-300-normal.woff2") format("woff2");font-weight:300;font-display:swap}
+@font-face{font-family:"IBM Plex Sans";src:url("/lib/ibm-plex-sans-latin-400-normal.woff2") format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"IBM Plex Sans";src:url("/lib/ibm-plex-sans-latin-500-normal.woff2") format("woff2");font-weight:500;font-display:swap}
+@font-face{font-family:"IBM Plex Sans";src:url("/lib/ibm-plex-sans-latin-600-normal.woff2") format("woff2");font-weight:600 700;font-display:swap}
+
+:root{
+  --nuit:#1A0B0E; --nuit-2:#241015; --rubis:#E8546C; --grenat:#6E1734; --gris-clair:#EEEAEC;
+  --police:"IBM Plex Sans","Segoe UI",system-ui,Arial,sans-serif;
+  --titre:"Space Grotesk","IBM Plex Sans","Segoe UI",sans-serif;
+  --filet:#E2DADD; --rayon:14px;
+}
+body{font-family:var(--police)}
+button,input,select,textarea{font-family:inherit}
+h1,h2,h3,h4,.tete-panneau h2,.bandeau,.etape-resume .valeur,.tb-synthese b,.tr-bloc>h3{font-family:var(--titre);font-stretch:normal}
+
+/* ---------- logo ---------- */
+.marque{gap:12px !important}
+.marque svg{display:none}
+.marque .marque-rm{height:30px;width:auto;display:block}
+.marque .marque-texte{height:19px;width:auto;display:block;margin-top:2px}
+body.app .marque .marque-rm{height:26px}
+body.app .marque .marque-texte{height:16px}
+.propose{font-family:var(--police)}
+
+/* ---------- accueil (bandeau sombre de la charte) ---------- */
+.tete{background:var(--nuit)}
+.signature{margin:0 0 14px;font-size:13px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--rubis)}
+.accueil h1{font-family:var(--titre);font-weight:700;letter-spacing:-.02em}
+.btn-accueil{border-radius:10px}
+.btn-accueil.principal{background:var(--rubis);border-color:var(--rubis);color:#fff}
+.btn-accueil.principal:hover{background:#F0687E;border-color:#F0687E}
+.feuille,.code-mini{border-radius:var(--rayon)}
+.depot{border-radius:var(--rayon)}
+
+/* ---------- bandeau du fichier ouvert ---------- */
+body.app{background:#ECE6E9}
+body.app .barre-fichier{background:var(--nuit);border:0;border-bottom:3px solid var(--rubis);border-radius:0;color:#F3E6EA;padding:10px 16px}
+body.app .barre-fichier .infos span{color:#C9B3BA}
+body.app .barre-fichier .btn{background:transparent;border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:10px}
+body.app .barre-fichier .btn:hover{border-color:#fff;background:rgba(255,255,255,.08)}
+
+/* ---------- menu de gauche : blanc, groupes en capitales rubis, actif = aplat grenat biseauté ---------- */
+.appli .onglets{background:#fff;border:0;border-radius:var(--rayon);padding:16px 0 18px;overflow:hidden}
+.appli .onglets .indicateur{display:none !important}
+.appli .onglets .groupe-nav{color:var(--rubis);font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;padding:14px 20px 4px}
+.appli .onglets .groupe-nav:first-child{padding-top:2px}
+.appli .onglets button{padding:9px 20px;border-radius:0 !important;color:#4A3D42;font-size:14px;gap:0}
+.appli .onglets button .ico{display:none}
+.appli .onglets button:hover:not(:disabled){background:#FAF6F7;color:var(--nuit)}
+.appli .onglets button.actif,.appli .onglets button.actif:hover{background:var(--grenat) !important;color:#fff !important;font-weight:600;
+  margin-right:14px;width:calc(100% - 14px);clip-path:polygon(0 0,100% 0,calc(100% - 13px) 100%,0 100%);padding-right:26px}
+.appli .onglets button.actif .badge{background:rgba(255,255,255,.18);color:#fff}
+
+/* ---------- en-tête de section, comme les titres de la présentation :
+   titre, étiquette numérotée en capitales rubis, trait rubis ---------- */
+.appli .panneau{background:#fff;border:0;border-radius:var(--rayon);padding:34px 44px 30px}
+.tete-panneau{border-bottom:0;padding-bottom:18px;margin-bottom:26px;
+  background:linear-gradient(var(--rubis),var(--rubis)) left bottom / 300px 3px no-repeat}
+.tete-panneau h2{font-size:34px;font-weight:700;letter-spacing:-.02em;line-height:1.08;color:var(--nuit)}
+.tete-panneau h2::after{display:block;margin-top:10px;font-family:var(--police);font-size:13px;font-weight:500;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--rubis)}
+#p-tableau .tete-panneau h2::after{content:"00. Synthèse"}
+#p-controles .tete-panneau h2::after{content:"01. Données · contrôles"}
+#p-verif .tete-panneau h2::after{content:"02. Données · traçabilité"}
+#p-apercu .tete-panneau h2::after{content:"03. Modèle · aperçu"}
+#p-modele .tete-panneau h2::after{content:"04. Modèle · lecture du SysML"}
+#p-matrice .tete-panneau h2::after{content:"05. Modèle · analyses"}
+#p-export .tete-panneau h2::after{content:"06. Livrables · CATIA Magic"}
+#p-assistant .tete-panneau h2::after{content:"07. Aide · assistant IA"}
+#p-traducteur .tete-panneau h2::after{content:"08. Aide · traducteur"}
+.tete-panneau p{font-size:15.5px;font-weight:300;color:#3C2F34;margin-top:10px}
+
+/* ---------- cartes : coins arrondis, filet fin (comme les cadres de la présentation) ---------- */
+.carte,.bloc,details.groupe,.tb-carte,.resume,.comment,.resume-verif,.etat-ia,.tr-etape,.tr-regle,.tr-exemple,
+.choix-ia label,.chat,.saisie textarea,pre.code,.code-infos,.erreur-lecture{border-radius:var(--rayon) !important;box-shadow:none !important}
+.btn,.segment,.suggestions button,.codes-onglets button,.pied-panneau button,.tb-uc .boutons button,.barre-outils input,.lien-aller{border-radius:10px !important}
+.segment button{border-radius:0 !important}
+.tag,.badge{border-radius:999px}
+.msg{border-radius:var(--rayon) !important}
+
+/* ---------- tableau de bord ---------- */
+.bandeau{background:none !important;padding:0;margin:0 0 22px;font-size:24px;font-weight:700;letter-spacing:-.015em;color:var(--nuit) !important;gap:14px}
+.bandeau .pastille{width:12px;height:12px;border-radius:50%}
+.bandeau .detail{font-family:var(--police);font-size:16px;font-weight:300;color:#3C2F34;letter-spacing:0}
+.resume{gap:0;border:1px solid var(--filet);background:#FBF8F9;overflow:hidden;margin-bottom:0}
+.etape-resume{background:none;border:0 !important;border-left:1px solid var(--filet) !important;border-radius:0 !important;padding:18px 22px 16px !important;gap:6px}
+.etape-resume:first-child{border-left:0 !important}
+.etape-resume:hover{background:#F5EEF1}
+.etape-resume .num{font-size:11.5px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--rubis)}
+.etape-resume .valeur,.etape-resume.ok .valeur{font-size:27px;font-weight:700;letter-spacing:-.02em;color:var(--grenat)}
+.etape-resume .valeur .explic{display:block;font-family:var(--police);font-size:13.5px;font-weight:400;letter-spacing:0;color:var(--doux);margin-top:2px}
+.etape-resume .explic{font-size:13.5px;line-height:1.45}
+.etape-resume .lien{color:var(--nuit);font-weight:600;font-size:13.5px}
+.etape-resume .lien::after{content:" →";color:var(--rubis)}
+.compteurs{background:var(--nuit);color:#C9B3BA;border:0;border-radius:var(--rayon);padding:12px 22px;margin:12px 0 30px;gap:6px 28px;font-size:13.5px}
+.compteurs b{color:#fff;font-family:var(--titre);font-size:17px;font-weight:700;margin-right:2px}
+
+.tb-grille{gap:22px}
+.tb-carte{border:1px solid var(--filet);padding:18px 20px;background:#fff}
+.tb-tete h3{font-family:var(--police);font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--rubis)}
+.tb-lien{color:var(--grenat);font-weight:600}
+.tb-lien:hover{text-decoration:none;color:var(--rubis)}
+.tb-cas{gap:14px}
+.tb-uc{border:1px solid var(--filet);border-top:3px solid var(--c,var(--grenat));border-radius:12px;padding:12px 14px 14px}
+.tb-uc b{font-family:var(--titre);font-size:16px}
+.tb-uc .acteurs span{border:0;padding:0;color:var(--doux);font-size:12.5px}
+.tb-uc .boutons button{border:1px solid var(--filet);background:#fff;padding:4px 10px;color:var(--grenat);font-weight:600}
+.tb-uc .boutons button:hover{border-color:var(--rubis);color:var(--rubis)}
+.tb-synthese b{font-size:30px;font-weight:700;color:var(--grenat)}
+.tb-barre{border-bottom:1px solid #EFEAEC;padding-bottom:6px}
+.tb-checks li{border-bottom:1px solid #EFEAEC;padding-bottom:7px}
+.tb-checks a{color:var(--nuit)}
+.tb-actions{gap:10px}
+.tb-actions button{background:#FBF8F9;border:1px solid var(--filet);border-radius:12px;padding:14px 18px;font-weight:600}
+.tb-actions button:hover{background:#fff;border-color:var(--rubis)}
+.tb-actions button .i{color:var(--rubis)}
+
+/* ---------- commandes ---------- */
+.btn{border:1px solid #CFC5C9;font-weight:600}
+.btn:hover{border-color:var(--rubis);color:var(--grenat)}
+.btn.principal{background:var(--grenat);border-color:var(--grenat)}
+.btn.principal:hover{background:var(--nuit);border-color:var(--nuit);color:#fff}
+.segment{border-color:#CFC5C9;overflow:hidden}
+.segment button.actif{background:var(--grenat)}
+.pied-panneau{border-top:1px solid var(--filet)}
+.pied-panneau button{border:1px solid var(--filet)}
+.pied-panneau .suivant{background:var(--grenat);border-color:var(--grenat)}
+.pied-panneau .suivant:hover{background:var(--nuit);border-color:var(--nuit)}
+.resume-verif.ok{background:#EEF7F1;border:1px solid #CFE8D8;padding:12px 16px;font-size:17px}
+.comment{background:#FBF8F9;border:1px solid var(--filet);border-left:3px solid var(--rubis)}
+details.groupe{border-color:var(--filet);overflow:hidden}
+details.groupe > summary{background:#FBF8F9}
+th{background:#FBF8F9;border-bottom:1px solid var(--nuit);font-weight:600}
+.choix-ia label.actif{border-color:var(--grenat);box-shadow:inset 3px 0 0 var(--grenat) !important}
+.msg.user{background:var(--grenat)}
+.lien-aller{border-color:var(--grenat);color:var(--grenat)}
+.retour-flottant{background:var(--grenat);border-radius:999px !important}
+.tr-etape::before{border-radius:50%}
+.intro{color:#3C2F34}
+
+/* lecteur de modèle (modele.css) : mêmes rayons, polices de la charte */
+.mo-btn,.mo-seg,.mo-fiche,.mo-dessin,.mo-tablezone,.mo-depot{border-radius:var(--rayon) !important}
+.mo-extrait{border-radius:10px !important}
+
+@media (max-width:1000px){
+  .appli .panneau{padding:22px 18px}
+  .tete-panneau h2{font-size:27px}
+  .bandeau{flex-wrap:wrap;font-size:20px;gap:6px 12px}
+  .bandeau .detail{flex-basis:100%;font-size:15px}
+  .etape-resume,.etape-resume:first-child{border-left:0 !important;border-top:1px solid var(--filet) !important;padding:14px 16px !important}
+  .etape-resume:first-child{border-top:0 !important}
+  .appli .onglets button.actif{margin-right:0}
+}
+.tb-uc .acteurs span+span::before{content:"· ";color:#B9AEB2}

@@ -1,0 +1,1772 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/lib/logo_rm.svg" type="image/svg+xml">
+<title>R-monie : de l'export UserShaker au SysML v2</title>
+<link rel="stylesheet" href="/modele.css">
+<style>
+  /* Police : NouvelR (Renault) si elle est installée sur ce PC ; sinon Encode Sans, police libre (licence OFL) copiée dans lib/ */
+  @font-face{font-family:"Encode Sans R";src:url("/lib/encode-sans.woff2") format("woff2");font-weight:100 900;font-stretch:75% 125%;font-display:swap;
+    unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+  /* Couleurs : noir rubis et grenat, d'après le concept E-Space (teinte approchée, pas un code officiel Renault) */
+  :root{
+    --nuit:#1D0A10; --nuit-2:#28111A; --rubis:#E8546C; --grenat:#6E1734; --grenat-fonce:#561127;
+    --fond:#F4F2F3; --carte:#ffffff; --texte:#241A1D; --doux:#6B5F63; --ligne:#E3DCDF; --ligne-forte:#CFC5C9;
+    --accent:var(--grenat); --accent-doux:#F4E7EB;
+    --ok:#1e7f47; --ok-doux:#e4f4ea; --att:#a35f00; --att-doux:#fcf1dc; --err:#c0392b; --err-doux:#fbe9e7;
+    --gris-doux:#EEEAEC;
+    --police:"NouvelR","Nouvel R","Encode Sans R","Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+    --mono: ui-monospace, "Cascadia Mono", Consolas, "Courier New", monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font:15px/1.5 var(--police);background:var(--fond);color:var(--texte)}
+  ::selection{background:#F0D3DB;color:var(--texte)}
+  input[type=radio],input[type=checkbox]{accent-color:var(--grenat)}
+  :focus-visible{outline:2px solid var(--grenat);outline-offset:2px}
+  .tete :focus-visible{outline-color:var(--rubis)}
+  button{font:inherit}
+  code,.mono{font-family:var(--mono);font-size:12.5px}
+  .cache{display:none !important}
+
+  /* ---------- en-tête R-monie ---------- */
+  .tete{background:var(--nuit);color:#F6ECEF}
+  .tete-in{max-width:1280px;margin:0 auto;padding:0 32px}
+  .barre-marque{display:flex;align-items:center;justify-content:space-between;gap:10px 24px;flex-wrap:wrap;padding:15px 0}
+  .marque{display:flex;align-items:center;gap:10px;margin:0;font-size:21px;font-weight:680;font-stretch:118%;letter-spacing:-.01em;color:#FBF3F5}
+  .marque svg{width:20px;height:18px;flex:none;fill:none;stroke:var(--rubis);stroke-width:2.4;stroke-linecap:round}
+  .propose{margin:0;font-size:13.5px;color:#C2A8B0}
+
+  /* accueil : visible tant qu'aucun fichier n'est chargé */
+  .accueil{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.04fr);gap:28px 64px;align-items:center;padding:34px 0 60px;border-top:1px solid rgba(255,255,255,.08)}
+  body:has(#resultat:not(.cache)) .accueil{display:none}
+  .accueil h1{margin:0 0 18px;font-size:clamp(2.05rem,3.3vw,2.95rem);line-height:1.07;font-weight:640;font-stretch:112%;letter-spacing:-.014em;color:#FBF3F5;max-width:14em;text-wrap:balance}
+  .chapo{margin:0 0 28px;font-size:17.5px;line-height:1.55;color:#D6C0C7;max-width:33em}
+  .actions-accueil{display:flex;flex-wrap:wrap;gap:10px}
+  .btn-accueil{height:46px;padding:0 20px;border-radius:8px;border:1px solid rgba(255,255,255,.26);background:transparent;color:#F6ECEF;font:inherit;font-size:15px;font-weight:600;cursor:pointer;transition:transform .1s ease-out,background-color .15s,border-color .15s}
+  .btn-accueil:hover{border-color:rgba(255,255,255,.55)}
+  .btn-accueil.principal{background:#FBF3F5;border-color:#FBF3F5;color:var(--nuit)}
+  .btn-accueil.principal:hover{background:#fff;border-color:#fff}
+  .btn-accueil:active:not(:disabled){transform:scale(.97)}
+  .btn-accueil:disabled{opacity:.65;cursor:progress}
+  .resultats-accueil{margin-top:34px;font-size:14px;color:#C2A8B0}
+  .resultats-accueil p{margin:0 0 6px}
+  .resultats-accueil ul{margin:0;padding:0;list-style:none;display:grid;gap:3px}
+  .resultats-accueil b{color:#FBF3F5;font-weight:650;font-variant-numeric:tabular-nums}
+
+  /* preuve : une ligne de l'Excel devient une ligne de SysML, reliées par un trait en U */
+  .preuve{position:relative;margin:0;padding-left:44px;display:grid;gap:22px}
+  .trait-u{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+  .trait-u path{fill:none;stroke:var(--rubis);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 5px rgba(232,84,108,.75))}
+  .trait-u circle{fill:var(--rubis)}
+  .feuille,.code-mini{background:var(--nuit-2);border:1px solid rgba(255,255,255,.09);border-radius:10px;overflow:hidden}
+  .legende-bloc{margin:0;padding:9px 14px;font-size:12.5px;color:#B89DA6;border-bottom:1px solid rgba(255,255,255,.07);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .feuille table{width:100%;table-layout:fixed;font-family:var(--mono);font-size:12px;border-collapse:collapse}
+  .feuille col.c-g{width:7.5%} .feuille col.c-id{width:19%} .feuille col.c-pos{width:15%} .feuille col.c-dec{width:28%}
+  .feuille th,.feuille td{padding:7px 10px;border:none;border-right:1px solid rgba(255,255,255,.06);text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+  .feuille th{background:none;color:#98808A;font-weight:500;font-size:11.5px;text-transform:none;letter-spacing:0;border-bottom:1px solid rgba(255,255,255,.07)}
+  .feuille td{color:#EADCE1;border-bottom:1px solid rgba(255,255,255,.05)}
+  .feuille .g{text-align:right;color:#98808A;background:rgba(255,255,255,.025)}
+  .feuille tr.loin td{opacity:.42}
+  .feuille tr.vise td{transition:background-color .45s}
+  .feuille tr.vise.allume td{background:rgba(232,84,108,.16)}
+  .feuille tr.vise.allume .g{color:var(--rubis);font-weight:700}
+  .code-mini pre{margin:0;padding:8px 0;font-family:var(--mono);font-size:12px;line-height:1.75;color:#EADCE1}
+  .code-mini .l{display:block;white-space:pre;overflow:hidden;text-overflow:ellipsis;padding-right:14px}
+  .code-mini .n{display:inline-block;width:40px;text-align:right;margin-right:12px;color:#8E6B76}
+  .code-mini .k{color:#F29CAD}
+  .code-mini .l.loin{opacity:.42}
+  .code-mini .l.vise{transition:background-color .45s,box-shadow .45s}
+  .code-mini .l.vise.allume{background:rgba(232,84,108,.2);box-shadow:inset 2px 0 0 var(--rubis)}
+  .verdict{display:flex;align-items:center;gap:8px;margin:0;font-size:13.5px;color:#E3D2D8}
+  .verdict .coche{color:#86D3A6;margin:0;font-weight:700}
+
+  /* parcours en 3 étapes, au-dessus de la zone de dépôt */
+  .parcours{display:flex;flex-wrap:wrap;align-items:center;gap:8px 0;margin:0 0 14px;padding:0;list-style:none;font-size:14px;color:var(--doux)}
+  .parcours li{display:flex;align-items:center;gap:8px}
+  .parcours li + li::before{content:"";width:26px;height:1px;background:var(--ligne-forte);margin:0 12px}
+  .parcours b{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--nuit);color:#fff;font-size:12px;font-weight:600}
+  @media (max-width:760px){.parcours{flex-direction:column;align-items:flex-start;gap:6px}.parcours li + li::before{display:none}
+    .feuille table,.code-mini pre{font-size:11px} .feuille col.c-g{width:10%} .feuille col.c-id{width:14%}}
+
+  main{max-width:1280px;margin:0 auto;padding:22px 32px 64px}
+  .carte{background:var(--carte);border:1px solid var(--ligne);border-radius:10px;padding:18px 20px;margin-bottom:16px}
+  h2{font-size:17px;margin:0 0 10px;font-weight:620;font-stretch:106%;letter-spacing:-.005em}
+  h3{font-size:15px;margin:0;font-weight:600}
+  .note{color:var(--doux);font-size:13.5px}
+
+  /* ---------- fichier ---------- */
+  .depot{display:block;border:2px dashed #CDBFC5;border-radius:10px;padding:30px;text-align:center;cursor:pointer;transition:.15s;background:#FBF9FA}
+  .depot:hover,.depot:focus,.depot.survol{border-color:var(--accent);background:var(--accent-doux);outline:none}
+  .depot .titre{font-size:16px}
+  .depot strong{color:var(--accent)}
+  .depot small{display:block;color:var(--doux);margin-top:6px}
+  .depot.en-cours{opacity:.6;pointer-events:none}
+  .barre-fichier{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:var(--carte);border:1px solid var(--ligne);border-radius:10px;padding:10px 14px 10px 18px;margin-bottom:16px}
+  .barre-fichier .infos{flex:1;min-width:260px}
+  .barre-fichier .infos b{font-weight:600}
+  .barre-fichier .infos span{color:var(--doux);font-size:13.5px}
+  .erreur-lecture{background:var(--err-doux);color:var(--err);border-radius:10px;padding:14px 18px;margin-bottom:16px;font-weight:600}
+  .erreur-lecture span{display:block;font-weight:400;color:var(--texte);margin-top:4px}
+
+  /* ---------- statut & résumé ---------- */
+  .bandeau{display:flex;align-items:center;gap:12px;border-radius:10px;padding:13px 18px;margin-bottom:14px;font-weight:600;font-size:15.5px}
+  .bandeau .pastille{width:12px;height:12px;border-radius:50%;flex:none}
+  .bandeau .detail{font-weight:400;color:var(--texte);font-size:14.5px}
+  .bandeau.ok{background:var(--ok-doux);color:var(--ok)} .bandeau.ok .pastille{background:var(--ok)}
+  .bandeau.att{background:var(--att-doux);color:var(--att)} .bandeau.att .pastille{background:var(--att)}
+  .bandeau.err{background:var(--err-doux);color:var(--err)} .bandeau.err .pastille{background:var(--err)}
+
+  .resume{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:12px}
+  .etape-resume{background:var(--carte);border:1px solid var(--ligne);border-left:5px solid var(--ligne-forte);border-radius:10px;padding:14px 16px;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:4px;transition:.12s}
+  .etape-resume:hover{border-top-color:var(--accent);border-right-color:var(--accent);border-bottom-color:var(--accent)}
+  .etape-resume .num{font-size:13px;color:var(--doux);font-weight:600}
+  .etape-resume .valeur{font-size:19px;font-weight:640;font-stretch:106%}
+  .etape-resume .explic{font-size:13.5px;color:var(--doux)}
+  .etape-resume .lien{font-size:13.5px;color:var(--accent);margin-top:auto;padding-top:4px}
+  .etape-resume.ok{border-left-color:var(--ok)} .etape-resume.ok .valeur{color:var(--ok)}
+  .etape-resume.att{border-left-color:var(--att)} .etape-resume.att .valeur{color:var(--att)}
+  .etape-resume.err{border-left-color:var(--err)} .etape-resume.err .valeur{color:var(--err)}
+  .etape-resume.inactif{cursor:default;opacity:.65} .etape-resume.inactif:hover{border-color:var(--ligne);box-shadow:none}
+  .jauge{height:7px;background:#EAE3E6;border-radius:4px;overflow:hidden;margin:4px 0 2px}
+  .jauge i{display:block;height:100%}
+  .compteurs{display:flex;flex-wrap:wrap;gap:6px 18px;color:var(--doux);font-size:13.5px;margin:2px 2px 18px}
+  .compteurs b{color:var(--texte);font-weight:600}
+
+  /* ---------- onglets ---------- */
+  .onglets{display:flex;gap:2px;border-bottom:1px solid var(--ligne);flex-wrap:wrap;scroll-margin-top:10px}
+  .onglets button{background:none;border:none;padding:10px 14px;color:var(--doux);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;font-size:14.5px}
+  .onglets button:hover:not(:disabled){color:var(--texte)}
+  .onglets button.actif{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+  .onglets button:disabled{opacity:.4;cursor:not-allowed}
+  .badge{display:inline-block;min-width:20px;padding:0 7px;margin-left:6px;border-radius:10px;background:var(--gris-doux);font-size:12px;font-weight:600;color:var(--texte)}
+  .badge.ok{background:var(--ok-doux);color:var(--ok)} .badge.att{background:var(--att-doux);color:var(--att)} .badge.err{background:var(--err);color:#fff}
+  .panneau{display:none;background:var(--carte);border:1px solid var(--ligne);border-top:none;border-radius:0 0 10px 10px;padding:20px 22px}
+  .panneau.actif{display:block}
+  .intro{margin:0 0 14px;color:var(--doux);font-size:14px;max-width:980px}
+
+  /* ---------- onglet « Comment fonctionne le traducteur » ---------- */
+  .tr-bloc{margin:0 0 28px}
+  .tr-bloc>h3{margin:0 0 6px;font-size:17px;font-weight:650}
+  .tr-bloc>p.tr-intro{margin:0 0 12px;color:var(--doux);font-size:14px;max-width:880px}
+  .tr-flux{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;counter-reset:tr}
+  @media (max-width:1000px){.tr-flux{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media (max-width:560px){.tr-flux{grid-template-columns:1fr}}
+  .tr-etape{background:var(--carte);border:1px solid var(--ligne);border-radius:10px;padding:12px 14px;position:relative}
+  .tr-etape::before{counter-increment:tr;content:counter(tr);position:absolute;top:10px;right:12px;width:22px;height:22px;border-radius:50%;background:var(--accent-doux);color:var(--accent);font-weight:700;font-size:12.5px;display:grid;place-items:center}
+  .tr-etape h4{margin:0 0 2px;font-size:14.5px;padding-right:26px}
+  .tr-etape .fic{font-family:var(--mono);font-size:11.5px;color:var(--accent);display:block;margin-bottom:6px}
+  .tr-etape p{margin:0;font-size:13.5px;color:var(--texte)}
+  .tr-etape p+p{margin-top:6px;color:var(--doux)}
+  .tr-regles{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+  .tr-regle{background:var(--carte);border:1px solid var(--ligne);border-left:3px solid var(--accent);border-radius:8px;padding:10px 14px;font-size:13.5px}
+  .tr-regle b{display:block;margin-bottom:3px;font-size:14px}
+  .tr-regle code{background:var(--gris-doux);padding:0 4px;border-radius:4px}
+  table.tr-table{font-size:13.5px;background:var(--carte);border:1px solid var(--ligne)}
+  table.tr-table td:first-child{white-space:nowrap}
+  table.tr-table code{font-size:12px}
+  .tr-exemple{background:var(--carte);border:1px solid var(--ligne);border-radius:10px;padding:14px 16px}
+  .tr-exemple select{font:inherit;font-size:14px;padding:5px 8px;border:1px solid var(--ligne-forte);border-radius:6px;max-width:100%}
+  .tr-ex-grille{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:14px;margin-top:12px}
+  @media (max-width:900px){.tr-ex-grille{grid-template-columns:1fr}}
+  .tr-ex-grille h4{margin:0 0 6px;font-size:13px;color:var(--doux);text-transform:uppercase;letter-spacing:.04em}
+  .tr-ex-grille dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13.5px}
+  .tr-ex-grille dt{color:var(--doux)} .tr-ex-grille dd{margin:0;overflow-wrap:anywhere}
+  .tr-code{margin:0;background:#1D0A10;color:#F3E6EA;border-radius:8px;padding:10px 0;font:12px/1.55 var(--mono);overflow:auto;max-height:340px}
+  .tr-code span{display:block;padding:0 12px;white-space:pre}
+  .tr-code span i{display:inline-block;width:42px;color:#9C8088;font-style:normal;user-select:none}
+  .tr-code span.cible{background:rgba(232,84,108,.28)}
+  .tr-criteres{margin-top:12px;font-size:13px}
+  .tr-criteres li{margin:2px 0}
+  .lien-aller{display:inline-block;margin:2px 4px 2px 0;padding:3px 10px;border:1px solid var(--accent);border-radius:14px;background:#fff;color:var(--accent);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+  .lien-aller:hover{background:var(--accent-doux)}
+  .retour-flottant{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:50;display:flex;align-items:center;gap:6px;padding:9px 16px;border:0;border-radius:22px;background:var(--grenat);color:#fff;font:inherit;font-size:14px;font-weight:600;box-shadow:0 6px 20px rgba(29,10,16,.28);cursor:pointer}
+  .retour-flottant:hover{background:var(--grenat-fonce)}
+  .retour-flottant[hidden]{display:none}
+  tr.flash td,.flash{animation:flash 1.6s ease-out}
+  @keyframes flash{0%,40%{background:#F6D9E1}100%{background:transparent}}
+  /* ---------- tableaux ---------- */
+  table{border-collapse:collapse;width:100%;font-size:14px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--ligne);vertical-align:top}
+  th{color:var(--doux);font-weight:600;font-size:13px;background:#FAF8F9}
+  main tbody tr:hover td{background:#FBF7F8}
+  .tag{display:inline-block;padding:1px 9px;border-radius:10px;font-size:12px;font-weight:600;white-space:nowrap}
+  .tag.bloq{background:var(--err);color:#fff} .tag.err{background:var(--err-doux);color:var(--err)}
+  .tag.att{background:var(--att-doux);color:var(--att)} .tag.ok{background:var(--ok-doux);color:var(--ok)}
+  .id{color:var(--doux);font-family:var(--mono);font-size:11.5px}
+  .vide{color:var(--doux);padding:16px 0;margin:0}
+  .vide.bien{color:var(--ok);font-weight:600}
+  .barre-outils{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+  .barre-outils input{border:1px solid var(--ligne-forte);border-radius:8px;padding:6px 10px;font-size:14px;min-width:280px;flex:1;max-width:420px}
+  .segment{display:inline-flex;border:1px solid var(--ligne-forte);border-radius:8px;overflow:hidden}
+  .segment button{border:none;background:#fff;padding:6px 12px;font-size:13.5px;cursor:pointer;border-right:1px solid var(--ligne)}
+  .segment button:last-child{border-right:none}
+  .segment button.actif{background:var(--accent);color:#fff}
+  a.lien-ligne{color:var(--accent);cursor:pointer;text-decoration:underline;font-family:var(--mono);font-size:12.5px;white-space:nowrap}
+
+  /* ---------- vérification ---------- */
+  .resume-verif{border-radius:10px;padding:12px 16px;margin-bottom:12px;font-weight:600}
+  .resume-verif.ok{background:var(--ok-doux);color:var(--ok)} .resume-verif.ko{background:var(--err-doux);color:var(--err)}
+  .resume-verif span{font-weight:400;color:var(--texte)}
+  .comment{background:#F8F5F6;border:1px solid var(--ligne);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13.5px;color:var(--doux)}
+  .comment b{color:var(--texte)}
+  details.groupe{border:1px solid var(--ligne);border-radius:10px;margin-bottom:12px;overflow:hidden}
+  details.groupe > summary{list-style:none;cursor:pointer;padding:11px 16px;background:#FAF8F9;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  details.groupe > summary::-webkit-details-marker{display:none}
+  details.groupe > summary::before{content:"▸";color:var(--doux);transition:.15s}
+  details.groupe[open] > summary::before{transform:rotate(90deg)}
+  details.groupe[open] > summary{border-bottom:1px solid var(--ligne)}
+  summary .g-titre{font-weight:600}
+  summary .g-sous{color:var(--doux);font-size:13px}
+  summary .tag{margin-left:auto}
+  .criteres-uc{display:flex;flex-wrap:wrap;gap:8px;padding:10px 16px;border-bottom:1px solid var(--ligne);background:#FDFCFC}
+  .crit-uc{border:1px solid var(--ligne);border-radius:8px;padding:5px 10px;font-size:13px;background:#fff}
+  .crit-uc .n{color:var(--doux);margin-right:6px}
+  .crit-uc.ko{border-color:var(--err);background:var(--err-doux)}
+  table.verif{font-size:13.5px}
+  .cv{display:flex;align-items:flex-start;gap:8px}
+  .cv > div{min-width:0}
+  .cv .coche{margin:0;flex:none}
+  .coche{color:var(--ok);font-weight:700;margin-left:6px}
+  td.c-ko{background:var(--err-doux) !important}
+  .etq{display:inline-block;min-width:44px;font-size:12px;font-weight:700;color:var(--doux)}
+  .ecart-txt{color:var(--err);font-size:12.5px;margin-top:3px}
+  .petite-liste{margin:0;padding:0;list-style:none}
+  .petite-liste li{margin:1px 0}
+  .puce{display:inline-block;background:var(--ok-doux);color:var(--ok);border-radius:10px;padding:0 8px;font-size:12px;margin:1px 3px 1px 0}
+  .puce.neutre{background:var(--gris-doux);color:var(--texte)}
+  .sysml-nom{font-family:var(--mono);font-size:12.5px}
+  .rang{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:24px;border-radius:50%;background:var(--nuit);color:#fff;font-size:12px;font-weight:600;padding:0 6px}
+  tr.ligne-ecart td:first-child{box-shadow:inset 4px 0 0 var(--err)}
+
+  /* ---------- aperçu ---------- */
+  .nav-uc{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+  .nav-uc a{border:1px solid var(--ligne-forte);border-radius:16px;padding:3px 12px;font-size:13.5px;color:var(--texte);text-decoration:none;background:#fff}
+  .nav-uc a:hover{border-color:var(--accent);color:var(--accent)}
+  .uc{border:1px solid var(--ligne);border-radius:10px;margin-bottom:16px;overflow:hidden;scroll-margin-top:12px}
+  .uc-tete{background:#FAF8F9;padding:12px 16px;border-bottom:1px solid var(--ligne)}
+  .uc-tete .sous{color:var(--doux);font-size:13px;margin-top:2px}
+  .acteur{display:inline-block;background:var(--accent-doux);color:var(--accent);border-radius:10px;padding:1px 9px;font-size:12.5px;margin:5px 4px 0 0}
+  ol.etapes{list-style:none;margin:0;padding:0}
+  ol.etapes li{display:grid;grid-template-columns:42px 1fr;gap:10px;padding:10px 16px;border-bottom:1px solid var(--ligne)}
+  ol.etapes li:last-child{border-bottom:none}
+  .num-etape{width:28px;height:28px;border-radius:50%;background:var(--nuit);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600}
+  .etape-nom{font-weight:600}
+  .ligne-info{font-size:13.5px;color:var(--doux);margin-top:3px}
+  .ligne-info b{color:var(--texte);font-weight:600}
+
+  /* ---------- matrice ---------- */
+  .matrice-zone{overflow:auto;border:1px solid var(--ligne);border-radius:10px}
+  table.matrice{width:auto;font-size:13px}
+  table.matrice th,table.matrice td{border:1px solid var(--ligne);text-align:center;padding:5px 6px;text-transform:none;letter-spacing:0}
+  table.matrice th.besoin-nom,table.matrice td.besoin-nom{text-align:left;min-width:250px;max-width:330px;position:sticky;left:0;background:#fff;z-index:1}
+  table.matrice thead th.besoin-nom{background:#FAF8F9;vertical-align:bottom}
+  table.matrice th.uc-col{background:#F1ECEE;color:var(--texte);font-size:12.5px}
+  table.matrice th.etape-col{vertical-align:bottom;padding:8px 3px;font-weight:500;color:var(--texte);background:#fff}
+  table.matrice th.etape-col span{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;display:inline-block;max-height:230px;overflow:hidden;text-overflow:ellipsis}
+  table.matrice th.etape-col.sans-besoin{color:var(--err);background:var(--err-doux)}
+  table.matrice td.x{color:var(--accent);font-size:15px;font-weight:700}
+  table.matrice tr.non-couvert td.besoin-nom{background:var(--err-doux);color:var(--err);font-weight:600}
+  table.matrice td.total{font-weight:600}
+  table.matrice tbody tr:hover td{background:#F7EFF2}
+  .legende{color:var(--doux);font-size:13px;margin-top:10px}
+
+  /* ---------- export ---------- */
+  .deux{display:grid;grid-template-columns:1.1fr 1fr;gap:18px;margin-bottom:18px}
+  .bloc{border:1px solid var(--ligne);border-radius:10px;padding:16px 18px}
+  ol.marche{margin:6px 0 0;padding-left:20px}
+  ol.marche li{margin:6px 0}
+  .fichiers{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+  .fichiers .f{display:flex;align-items:center;gap:12px}
+  .fichiers .f .note{flex:1}
+  .btn{border:1px solid var(--ligne-forte);background:#fff;border-radius:8px;padding:8px 14px;font-size:14px;cursor:pointer;white-space:nowrap}
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+  .btn.principal{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  .btn.principal:hover{background:var(--grenat-fonce);border-color:var(--grenat-fonce);color:#fff}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  ul.liste{margin:6px 0 0;padding-left:20px;color:var(--doux);font-size:13.5px}
+  pre.code{background:var(--nuit);color:#F1E4E8;border-radius:10px;padding:10px 0;max-height:480px;overflow:auto;font-family:var(--mono);font-size:12.5px;line-height:1.55;margin:0;position:relative}
+  pre.code .l{display:block;padding-right:16px;white-space:pre}
+  pre.code .l .n{display:inline-block;width:46px;text-align:right;margin-right:14px;color:#8E6B76;user-select:none}
+  pre.code .l.vise{background:rgba(232,84,108,.30);box-shadow:inset 3px 0 0 var(--rubis)}
+
+  /* ---------- assistant ---------- */
+  .etat-ia{border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:14px}
+  .etat-ia.ok{background:var(--ok-doux);color:var(--ok);font-weight:600}
+  .etat-ia.non{background:var(--att-doux);color:var(--att)}
+  .etat-ia span{font-weight:400;color:var(--texte)}
+  .choix-ia{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+  .choix-ia label{display:flex;align-items:center;gap:8px;border:1px solid var(--ligne-forte);border-radius:10px;padding:8px 12px;cursor:pointer;font-size:14px;background:var(--carte)}
+  .choix-ia label.actif{border-color:var(--ok);box-shadow:0 0 0 1px var(--ok)}
+  .choix-ia label.indispo{opacity:.55;cursor:not-allowed}
+  .choix-ia small{color:var(--doux);font-size:12px}
+  .suggestions{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+  .suggestions button{border:1px solid var(--ligne-forte);background:#fff;border-radius:16px;padding:5px 12px;font-size:13.5px;cursor:pointer;text-align:left}
+  .suggestions button:hover{border-color:var(--accent);color:var(--accent)}
+  .chat{display:flex;flex-direction:column;gap:12px;margin-bottom:12px}
+  .msg{max-width:88%;border-radius:12px;padding:10px 14px;font-size:14.5px;line-height:1.55}
+  .msg.user{align-self:flex-end;background:var(--accent);color:#fff;white-space:pre-wrap}
+  .msg.ia{align-self:flex-start;background:#F7F4F5;border:1px solid var(--ligne)}
+  .msg.ia p{margin:0 0 8px} .msg.ia p:last-child{margin-bottom:0}
+  .msg.ia ul,.msg.ia ol{margin:4px 0 8px;padding-left:22px}
+  .msg.ia table{margin:6px 0 10px;font-size:13px;background:#fff}
+  .msg.ia th{text-transform:none;letter-spacing:0;font-size:12.5px}
+  .msg.ia code{background:#EFE8EB;border-radius:4px;padding:0 4px}
+  .msg.ia .meta{color:var(--doux);font-size:12px;margin-top:6px}
+  .curseur{color:var(--accent);animation:clignote 1s steps(1) infinite}
+  @keyframes clignote{50%{opacity:0}}
+  .msg.erreur{align-self:flex-start;background:var(--err-doux);color:var(--err);border:1px solid #f0c8c3}
+  .msg.attente{align-self:flex-start;background:#F7F4F5;border:1px solid var(--ligne);color:var(--doux);font-style:italic}
+  .saisie{border:1px solid var(--ligne-forte);border-radius:10px;padding:10px;background:#fff}
+  .saisie textarea{width:100%;border:none;resize:vertical;font:inherit;font-size:14.5px;outline:none;min-height:46px}
+  .actions-chat{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .crit-mini{display:inline-block;border:1px solid var(--ligne);border-radius:10px;padding:0 8px;font-size:12px;margin:1px 3px 1px 0;background:#fff;white-space:nowrap;cursor:help}
+  .crit-mini.ok{color:var(--ok);border-color:#bfe3cc;background:var(--ok-doux)}
+  .crit-mini.ko{color:var(--err);border-color:var(--err);background:var(--err-doux);font-weight:600}
+  .codes-onglets{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 10px}
+  .codes-onglets button{border:1px solid var(--ligne-forte);background:var(--carte);border-radius:10px;padding:8px 12px;cursor:pointer;text-align:left;font:inherit;font-size:13.5px;min-width:170px}
+  .codes-onglets button.actif{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+  .codes-onglets small{display:block;color:var(--doux);font-size:12px}
+  .codes-onglets .jauge{margin:5px 0 0}
+  .code-infos{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:8px}
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--nuit);color:#fff;padding:10px 18px;border-radius:8px;font-size:14px;opacity:0;transition:.2s;pointer-events:none;z-index:10}
+  .toast.vu{opacity:1}
+  @media (max-width:1000px){.resume{grid-template-columns:1fr}.deux{grid-template-columns:1fr} main{padding:16px} .tete-in{padding:0 16px} .accueil{grid-template-columns:1fr;padding:22px 0 40px} .preuve{padding-left:36px}}
+
+  /* ---------- finitions & animations (aspect seulement, aucun changement de fonctionnement) ---------- */
+  .etape-resume .valeur{letter-spacing:-.01em}
+  /* barre d'onglets fixe et translucide : le contenu défile dessous */
+  .onglets{position:sticky;top:0;z-index:20;background:rgba(244,242,243,.8);
+    -webkit-backdrop-filter:blur(16px) saturate(180%);backdrop-filter:blur(16px) saturate(180%);transition:box-shadow .2s}
+  .onglets.colle{box-shadow:0 8px 14px -12px rgba(21,27,43,.35)}
+  .onglets.indic button.actif{border-bottom-color:transparent}
+  .onglets .indicateur{position:absolute;left:0;top:0;height:2px;width:0;background:var(--accent);border-radius:2px;pointer-events:none}
+  #ancreOnglets{height:0}
+  .uc{scroll-margin-top:64px}
+  /* retour visuel immédiat à l'appui */
+  .btn,.segment button,.onglets button,.suggestions button,.codes-onglets button,.nav-uc a,.choix-ia label{transition:transform .1s ease-out,background-color .15s,border-color .15s,color .15s,box-shadow .15s}
+  .btn:active:not(:disabled),.segment button:active,.suggestions button:active,.codes-onglets button:active,.nav-uc a:active,.choix-ia label:active{transform:scale(.97)}
+  .onglets button:active:not(:disabled){transform:scale(.96)}
+  .etape-resume{transition:transform .1s ease-out,border-color .12s,box-shadow .12s}
+  .etape-resume:not(.inactif):active{transform:scale(.985)}
+  /* zone de dépôt qui réagit au fichier glissé */
+  .depot{transition:transform .2s cubic-bezier(.2,.8,.2,1),border-color .15s,background-color .15s,box-shadow .2s}
+  .depot.survol{transform:scale(1.01);box-shadow:0 6px 22px rgba(110,23,52,.14)}
+  .depot:active{transform:scale(.99)}
+  .toast{transform:translate(-50%,8px);transition:opacity .2s,transform .25s cubic-bezier(.2,.8,.2,1)}
+  .toast.vu{transform:translate(-50%,0)}
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto}
+    .btn,.btn-accueil,.segment button,.onglets button,.suggestions button,.codes-onglets button,.nav-uc a,.choix-ia label,.etape-resume,.depot,.toast,.feuille tr.vise td,.code-mini .l.vise{transition:none !important;transform:none !important}
+    .toast{transform:translateX(-50%) !important}
+  }
+  @media (prefers-reduced-transparency: reduce){
+    .onglets{background:var(--fond);-webkit-backdrop-filter:none;backdrop-filter:none}
+  }
+
+  /* ================= mode application (après le chargement d'un fichier) ================= */
+  body.app .accueil{display:none}
+  body.app .barre-marque{padding:10px 0}
+  body.app .tete-in{max-width:none;padding:0 24px}
+  body.app main{max-width:none;padding:16px 24px 48px}
+  body.app .barre-fichier{margin-bottom:14px;padding:8px 12px 8px 16px}
+  .appli{display:grid;grid-template-columns:268px minmax(0,1fr);gap:22px;align-items:start}
+  .appli.cache{display:none}
+  .cote{position:sticky;top:14px;max-height:calc(100vh - 28px);overflow:auto}
+  .appli .onglets{position:relative;display:flex;flex-direction:column;gap:2px;border:1px solid var(--ligne);border-radius:12px;background:var(--carte);
+    padding:10px 8px;flex-wrap:nowrap;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+  .appli .onglets .groupe-nav{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--doux);padding:12px 10px 4px}
+  .appli .onglets .groupe-nav:first-child{padding-top:4px}
+  .appli .onglets button{display:flex;align-items:center;gap:10px;text-align:left;width:100%;padding:9px 10px;border:none;border-radius:8px;margin:0;
+    font-size:14.5px;color:var(--texte);border-bottom:none}
+  .appli .onglets button .lib{flex:1;min-width:0}
+  .appli .onglets button .ico{font-style:normal;width:22px;height:22px;border-radius:6px;display:inline-grid;place-items:center;font-size:12.5px;
+    background:var(--gris-doux);color:var(--doux);flex:none}
+  .appli .onglets button:hover:not(:disabled){background:#FAF6F7}
+  .appli .onglets button.actif{background:var(--accent-doux);color:var(--accent);font-weight:600;border-bottom:none}
+  .appli .onglets button.actif .ico{background:var(--accent);color:#fff}
+  .appli .onglets .badge{margin-left:auto}
+  .appli .onglets .indicateur{width:3px;left:0}
+  .appli .onglets.indic button.actif{border-bottom:none}
+  .contenu{min-width:0}
+  .appli .panneau{border:1px solid var(--ligne);border-radius:12px;padding:22px 26px 26px}
+  .tete-panneau{margin:-2px 0 18px;padding-bottom:14px;border-bottom:1px solid var(--ligne)}
+  .tete-panneau h2{margin:0 0 4px;font-size:22px;font-weight:650;font-stretch:108%;letter-spacing:-.01em}
+  .tete-panneau p{margin:0;color:var(--doux);font-size:14.5px}
+  .pied-panneau{display:flex;justify-content:space-between;gap:12px;margin-top:26px;padding-top:16px;border-top:1px solid var(--ligne)}
+  .pied-panneau button{border:1px solid var(--ligne-forte);background:#fff;border-radius:8px;padding:9px 14px;font-size:14px;cursor:pointer;color:var(--texte)}
+  .pied-panneau button:hover{border-color:var(--accent);color:var(--accent)}
+  .pied-panneau .suivant{margin-left:auto;background:var(--accent);border-color:var(--accent);color:#fff}
+  .pied-panneau .suivant:hover{color:#fff;filter:brightness(1.1)}
+  .pied-panneau small{display:block;font-size:11.5px;opacity:.75}
+  /* tableau de bord */
+  #p-tableau .resume{margin-top:4px}
+  .tb-grille{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:6px}
+  .tb-carte{border:1px solid var(--ligne);border-radius:12px;padding:16px 18px;background:#fff;min-width:0}
+  .tb-large{grid-column:1 / -1}
+  .tb-tete{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px}
+  .tb-tete h3{margin:0;font-size:15.5px;font-weight:650}
+  .tb-lien{color:var(--accent);cursor:pointer;font-size:13.5px;white-space:nowrap;text-decoration:none}
+  .tb-lien:hover{text-decoration:underline}
+  .tb-cas{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+  .tb-uc{border:1px solid var(--ligne);border-left:4px solid var(--c,var(--accent));border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+  .tb-uc b{font-size:14.5px}
+  .tb-uc .meta{color:var(--doux);font-size:12.5px}
+  .tb-uc .acteurs{display:flex;flex-wrap:wrap;gap:4px}
+  .tb-uc .acteurs span{font-size:11.5px;border:1px solid var(--ligne-forte);border-radius:10px;padding:0 7px;color:var(--doux)}
+  .tb-uc .boutons{display:flex;gap:6px;margin-top:auto;padding-top:4px}
+  .tb-uc .boutons button{border:1px solid var(--ligne-forte);background:#fff;border-radius:7px;padding:4px 9px;font-size:12.5px;cursor:pointer}
+  .tb-uc .boutons button:hover{border-color:var(--accent);color:var(--accent)}
+  .tb-jauge{height:6px;border-radius:3px;background:var(--gris-doux);overflow:hidden}
+  .tb-jauge i{display:block;height:100%;border-radius:3px}
+  .tb-barres{display:flex;flex-direction:column;gap:7px}
+  .tb-barre{display:grid;grid-template-columns:minmax(0,1fr) 120px 22px;gap:10px;align-items:center;font-size:13px}
+  .tb-barre .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tb-barre .v{font-weight:650;text-align:right}
+  .tb-barre.zero .n,.tb-barre.zero .v{color:var(--err)}
+  .tb-synthese{display:flex;align-items:baseline;gap:8px;margin-bottom:12px}
+  .tb-synthese b{font-size:26px;font-weight:650;font-stretch:108%}
+  .tb-synthese span{color:var(--doux);font-size:13.5px}
+  .tb-pbs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+  .tb-pbs li{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;line-height:1.45}
+  .tb-pbs .tag{flex:none}
+  .tb-vide{color:var(--ok);font-weight:600;display:flex;gap:8px;align-items:center}
+  .tb-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  @media (max-width:1200px){.tb-actions{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .tb-checks{list-style:none;margin:0 0 12px;padding:0;display:flex;flex-direction:column;gap:9px}
+  .tb-checks li{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;align-items:baseline;font-size:13.5px}
+  .tb-checks .s{font-weight:700} .tb-checks .s.ok{color:var(--ok)} .tb-checks .s.att{color:var(--att)} .tb-checks .s.err{color:var(--err)}
+  .tb-checks .v{font-weight:650;white-space:nowrap}
+  .tb-checks a{color:var(--accent);cursor:pointer}
+  .tb-actions button{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;border:1px solid var(--ligne);background:#FCFAFB;border-radius:10px;
+    padding:12px 14px;cursor:pointer;font-size:14px;font-weight:600;color:var(--texte);transition:border-color .12s,background-color .12s,transform .1s}
+  .tb-actions button small{font-weight:400;color:var(--doux);font-size:12.5px}
+  .tb-actions button:hover{border-color:var(--accent);background:#fff}
+  .tb-actions button:active{transform:scale(.98)}
+  .tb-actions button .i{font-size:17px;color:var(--accent)}
+  @media (max-width:1000px){
+    .appli{grid-template-columns:1fr}
+    .cote{position:sticky;top:0;z-index:30;max-height:none}
+    .appli .onglets{flex-direction:row;overflow-x:auto;padding:6px}
+    .appli .onglets .groupe-nav{display:none}
+    .appli .onglets button{width:auto;white-space:nowrap}
+    .tb-grille{grid-template-columns:1fr}
+  }
+</style>
+<link rel="stylesheet" href="/theme.css">
+</head>
+<body>
+<header class="tete">
+  <div class="tete-in">
+    <div class="barre-marque">
+      <p class="marque"><img class="marque-rm" src="/lib/logo_rm.svg" alt=""><img class="marque-texte" src="/lib/logo_texte_fond_sombre.svg" alt="R-monie"></p>
+      <p class="propose">Proposé à Renault pour le concept E-Space</p>
+    </div>
+    <section class="accueil" aria-labelledby="titreAccueil">
+      <div>
+        <p class="signature">L'harmonie numérique entre l'UX et l'ingénierie système.</p>
+        <h1 id="titreAccueil">Des ateliers UX au modèle SysML, sans rien ressaisir.</h1>
+        <p class="chapo">R-monie lit l'export UserShaker, écrit un code SysML v2 par cas d'usage pour CATIA Magic, puis relit chaque code contre l'Excel.</p>
+        <div class="actions-accueil">
+          <button type="button" class="btn-accueil principal" id="btnChoisir">Ouvrir un export UserShaker (.xlsx)</button>
+        </div>
+        <div class="resultats-accueil">
+          <p>Sur l'export E-Space :</p>
+          <ul>
+            <li><b>62 éléments sur 62</b> conformes après relecture</li>
+            <li><b>606 lignes</b> de l'Excel retrouvées dans les codes</li>
+            <li><b>4 codes</b> sous la limite de 20 000 caractères de CATIA Community</li>
+          </ul>
+        </div>
+      </div>
+      <figure class="preuve" id="preuve" role="img" aria-label="Exemple tiré de l'export E-Space : la ligne 19 de l'onglet steps, Park at the charger, devient la ligne 162 du code SysML du cas d'usage 4, relue et conforme à l'Excel.">
+        <svg class="trait-u" aria-hidden="true"><path id="traitU" d=""/><circle id="boutA" r="3.5" cx="-20" cy="-20"/><circle id="boutB" r="3.5" cx="-20" cy="-20"/></svg>
+        <div class="feuille" aria-hidden="true">
+          <p class="legende-bloc">Export UserShaker, onglet steps</p>
+          <table>
+            <colgroup><col class="c-g"><col class="c-id"><col class="c-pos"><col><col class="c-dec"></colgroup>
+            <thead><tr><th class="g"></th><th>step_id</th><th>position</th><th>name</th><th>trigger_text</th></tr></thead>
+            <tbody>
+              <tr class="loin"><td class="g">18</td><td>cc2a074609c7e1e3acbb322ec</td><td>6</td><td>Goodbye</td><td>The doors are locked from outside.</td></tr>
+              <tr class="vise allume" id="preuveLigne"><td class="g">19</td><td>ccdd8e505c8dfb9b8a8ba7ab2</td><td>1</td><td>Park at the charger</td><td>Camille selects P.</td></tr>
+              <tr class="loin"><td class="g">20</td><td>c247edab496ee252de85db714</td><td>2</td><td>Plug in</td><td>The charging cable is connected and charging starts.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="code-mini" aria-hidden="true">
+          <p class="legende-bloc">Code SysML, UC4LoungeStopWhileCharging.sysml</p>
+          <pre><span class="l loin"><span class="n">161</span><span class="k">attribute</span> gridSeatAreaSensors = "1: Seats locked ; 2: Seats locked ; 3: Seats locked ; 4: Swivel zone clear ; 5: Seats locked ; 6: Seats locked ; 7: Seats locked";</span><span class="l vise allume" id="preuveCode"><span class="n">162</span><span class="k">action</span> step01ParkAtTheCharger {</span><span class="l"><span class="n">163</span><span class="k">doc</span> /* ccdd8e505c8dfb9b8a8ba7ab2 : Park at the charger */</span><span class="l"><span class="n">164</span><span class="k">attribute</span> description = "Two hours after leaving Lyon, the battery is down to 18% and the navigation has planned a stop at a fast-charging station on the motorway. Camill</span><span class="l"><span class="n">165</span><span class="k">attribute</span> triggerText = "Camille selects P.";</span><span class="l"><span class="n">166</span><span class="k">attribute</span> triggerEvent = "Gear selector is P" { <span class="k">doc</span> /* cf9bb07a433c0b461b62bc725 */ }</span></pre>
+        </div>
+        <figcaption class="verdict" id="verdictPreuve"><span class="coche" aria-hidden="true">✓</span>Ligne relue par R-monie : conforme à l'Excel.</figcaption>
+      </figure>
+    </section>
+  </div>
+</header>
+
+<main>
+  <input type="file" id="entree" accept=".xlsx" hidden>
+  <button type="button" class="retour-flottant" id="retour" hidden></button>
+
+  <section class="carte" id="zoneFichier">
+    <h2>Votre export UserShaker</h2>
+    <ol class="parcours">
+      <li><b>1</b>Déposer l'export UserShaker (.xlsx)</li>
+      <li><b>2</b>Lire les contrôles et la vérification</li>
+      <li><b>3</b>Copier les codes SysML dans CATIA</li>
+    </ol>
+    <div class="depot" id="depot" role="button" tabindex="0" aria-label="Choisir un fichier xlsx">
+      <div class="titre"><strong>Choisir un fichier .xlsx</strong> ou le déposer ici</div>
+      <small>Export UserShaker (schéma 1.0). Le fichier d'origine n'est jamais modifié. Fermer le fichier dans Excel avant.</small>
+    </div>
+    <p class="note" style="margin:12px 0 0">Vous avez déjà des codes SysML ? <a href="/modele" style="color:var(--accent);font-weight:600">Les ouvrir dans le lecteur de modèle (.sysml)</a></p>
+  </section>
+
+  <div class="barre-fichier cache" id="barreFichier">
+    <div class="infos" id="infosFichier"></div>
+    <button class="btn" id="btnChanger">Changer de fichier</button>
+  </div>
+
+  <div id="erreurLecture" class="erreur-lecture cache"></div>
+
+  <div id="resultat" class="cache appli">
+    <!-- menu latéral : une entrée par écran, regroupées dans l'ordre du travail -->
+    <aside class="cote">
+      <nav class="onglets" id="onglets" aria-label="Sections">
+        <span class="groupe-nav">Synthèse</span>
+        <button data-p="tableau" class="actif"><i class="ico" aria-hidden="true">◧</i><span class="lib">Tableau de bord</span></button>
+        <span class="groupe-nav">Données</span>
+        <button data-p="controles"><i class="ico" aria-hidden="true">✓</i><span class="lib">Contrôles des données</span><span class="badge" id="bControles"></span></button>
+        <button data-p="verif"><i class="ico" aria-hidden="true">⇄</i><span class="lib">Vérification Excel ↔ SysML</span><span class="badge" id="bVerif"></span></button>
+        <span class="groupe-nav">Modèle</span>
+        <button data-p="apercu"><i class="ico" aria-hidden="true">☰</i><span class="lib">Aperçu du modèle</span></button>
+        <button data-p="modele"><i class="ico" aria-hidden="true">⌘</i><span class="lib">Modèle lu dans le SysML</span></button>
+        <button data-p="matrice"><i class="ico" aria-hidden="true">▤</i><span class="lib">Analyses</span></button>
+        <span class="groupe-nav">Livrables</span>
+        <button data-p="export"><i class="ico" aria-hidden="true">⇩</i><span class="lib">Export vers CATIA</span></button>
+        <span class="groupe-nav">Aide</span>
+        <button data-p="assistant"><i class="ico" aria-hidden="true">✦</i><span class="lib">Assistant IA</span></button>
+        <button data-p="traducteur"><i class="ico" aria-hidden="true">⚙</i><span class="lib">Comment fonctionne le traducteur</span></button>
+      </nav>
+    </aside>
+
+    <div class="contenu">
+    <div id="ancreOnglets"></div>
+
+    <!-- 0. tableau de bord -->
+    <section class="panneau actif" id="p-tableau">
+      <header class="tete-panneau"><h2>Tableau de bord</h2><p id="tbSous">Où en est la traduction, et par où continuer.</p></header>
+      <div id="bandeau" class="bandeau"></div>
+      <div class="resume" id="resume"></div>
+      <div class="compteurs" id="compteurs"></div>
+      <div class="tb-grille">
+        <div class="tb-carte tb-large"><div class="tb-tete"><h3>Cas d'usage et codes SysML</h3><a class="tb-lien" data-aller="export">Tous les codes →</a></div><div id="tbCas"></div></div>
+        <div class="tb-carte"><div class="tb-tete"><h3>Couverture des besoins</h3><a class="tb-lien" data-aller="matrice">Analyses →</a></div><div id="tbBesoins"></div></div>
+        <div class="tb-carte"><div class="tb-tete"><h3>Contrôles et vérification</h3><a class="tb-lien" data-aller="verif">Vérification →</a></div><div id="tbProblemes"></div></div>
+        <div class="tb-carte tb-large"><div class="tb-tete"><h3>Actions rapides</h3></div><div id="tbActions" class="tb-actions"></div></div>
+      </div>
+    </section>
+
+    <!-- 1. contrôles -->
+    <section class="panneau" id="p-controles">
+      <header class="tete-panneau"><h2>Contrôles des données</h2><p>Étape 1 : les données de l'Excel respectent-elles le schéma UserShaker ?</p></header>
+      <p class="intro">Les données de l'Excel sont contrôlées avec le schéma officiel UserShaker (onglet <i>readme</i> de l'export).
+        Une <b>erreur bloquante</b> empêche la traduction : le modèle serait faux. Un <b>avertissement</b> signale une incohérence
+        ou un manque à remonter à l'équipe UX ; le modèle est quand même produit.</p>
+      <div class="barre-outils"><span class="segment" id="filtresC"></span></div>
+      <div id="tableControles"></div>
+    </section>
+
+    <!-- 2. vérification -->
+    <section class="panneau" id="p-verif">
+      <header class="tete-panneau"><h2>Vérification Excel ↔ SysML</h2><p>Étape 2 : chaque élément de l'Excel se retrouve-t-il, identique, dans les codes ?</p></header>
+      <div id="resumeVerif"></div>
+      <div class="comment"><b>Comment c'est vérifié :</b> les codes .sysml produits (un par cas d'usage) sont <b>relus</b> par un module
+        indépendant du traducteur, puis comparés à l'Excel, critère par critère : présence (id), nom, infos, états des composants,
+        acteurs, rang de chaque étape dans l'enchaînement <code>first … then …</code>, déclencheurs, besoins servis, groupe, textes,
+        grille composant × étape et ressentis. Cliquer sur « UC4 ligne N » ouvre le code à cet endroit.</div>
+      <div class="barre-outils">
+        <span class="segment" id="vueVerif">
+          <button data-v="elements" class="actif">Par élément</button>
+          <button data-v="trace">Toutes les correspondances</button>
+        </span>
+        <span class="segment" id="filtreVerif">
+          <button data-f="tout" class="actif">Tout</button>
+          <button data-f="ecarts">Écarts seulement</button>
+        </span>
+        <input type="search" id="rechercheVerif" placeholder="Rechercher un nom, un id, un onglet…">
+      </div>
+      <div id="tableVerif"></div>
+    </section>
+
+    <!-- 3. aperçu -->
+    <section class="panneau" id="p-apercu">
+      <header class="tete-panneau"><h2>Aperçu du modèle</h2><p>Les cas d'usage, leurs acteurs et leurs étapes, tels que traduits.</p></header>
+      <p class="intro">Ce que contient le modèle, avec les noms de l'Excel et, en gris, le nom de l'élément SysML.</p>
+      <div id="apercu"></div>
+    </section>
+
+    <!-- 4. matrice -->
+    <section class="panneau" id="p-matrice">
+      <header class="tete-panneau"><h2>Analyses</h2><p>Graphes de synthèse : besoins, émotions des personas, composants.</p></header>
+      <div class="barre-outils" style="margin-bottom:12px"><span class="segment" id="vueAnalyses">
+        <button data-analyse="matrice" class="actif">Besoins × étapes</button><button data-analyse="couverture">Couverture des besoins</button><button data-analyse="emotions">Parcours émotionnel</button><button data-analyse="composants">Composants × étapes</button>
+      </span></div>
+      <div id="analyseAutre" hidden></div>
+      <div id="analyseMatrice">
+      <p class="intro">Quelle étape sert quel besoin utilisateur (<code>satisfy</code> dans le modèle). En rouge : un besoin servi par
+        aucune étape, ou une étape qui ne sert aucun besoin.</p>
+      <div class="matrice-zone" id="matrice"></div>
+      <p class="legende">● = l'étape sert ce besoin. Dernière colonne : nombre d'étapes qui servent le besoin.</p>
+      </div>
+    </section>
+
+    <!-- 4 bis. modèle relu dans les codes SysML (interface/page/modele.js) -->
+    <section class="panneau" id="p-modele">
+      <header class="tete-panneau"><h2>Modèle lu dans le SysML</h2><p>Le modèle redessiné à partir des seuls codes .sysml, élément par élément.</p></header>
+      <div id="modeleZone"></div>
+    </section>
+
+    <!-- 5. export -->
+    <section class="panneau" id="p-export">
+      <header class="tete-panneau"><h2>Export vers CATIA</h2><p>Étape 3 : copier ou télécharger les codes pour CATIA Magic.</p></header>
+      <div class="deux">
+        <div class="bloc">
+          <h2>Importer dans CATIA Magic</h2>
+          <ol class="marche">
+            <li id="etapeProjet">Un <b>nouveau projet SysML v2 vide par code</b> (les cas d'usage sont indépendants).</li>
+            <li>Choisir le code ci-dessous, puis <button class="btn principal" id="btnCopier">Copier ce code</button></li>
+            <li>Clic droit sur le package <b>Model</b> &gt; Textual Editor &gt; Open ; tout sélectionner, coller, appliquer.</li>
+            <li>Clic droit sur le package &gt; Validation &gt; Validate : aucune erreur attendue.</li>
+            <li>Diagramme : Action Flow View sur le use case, glisser les actions (« Create Symbols »), puis <b>Display Relations</b>.</li>
+          </ol>
+        </div>
+        <div class="bloc">
+          <h2>Fichiers</h2>
+          <div class="fichiers">
+            <div class="f"><button class="btn" id="btnZip">Tous les codes (.zip)</button><span class="note">Les codes .sysml (par cas d'usage, et le code entier dans <code>code_entier/</code>), la traçabilité et le rapport.</span></div>
+            <div class="f"><button class="btn" id="btnTrace">Traçabilité .xlsx</button><span class="note">Chaque ligne de l'Excel et l'endroit où elle se trouve dans les codes, plus la vérification.</span></div>
+            <div class="f"><button class="btn" id="btnRapport">Rapport .txt</button><span class="note">Contrôles, codes et tailles, couverture, vérification.</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="deux">
+        <div><h2>Couverture</h2><div id="couverture"></div></div>
+        <div>
+          <h2>Non traduit</h2>
+          <p class="note" style="margin:0">Ces colonnes restent dans l'Excel ; tout le reste est dans les codes.</p>
+          <ul class="liste" id="nonTraduit"></ul>
+        </div>
+      </div>
+      <h2>Codes SysML</h2>
+      <div class="barre-outils" style="margin-bottom:10px"><span class="note" style="margin-right:8px">Version de CATIA Magic chez le client :</span>
+        <span class="segment" id="versionCatia">
+          <button data-version="community" class="actif" title="Limite de 20 000 caractères par code : un code par cas d'usage, coupé en parties si besoin">Community : un code par cas d'usage</button><button data-version="complete" title="Pas de limite de taille : un seul code avec tous les cas d'usage">Complète : code entier</button>
+        </span></div>
+      <div class="codes-onglets" id="codesOnglets"></div>
+      <div class="code-infos" id="codeInfos"></div>
+      <pre class="code" id="code"></pre>
+    </section>
+
+    <!-- 6. assistant -->
+    <section class="panneau" id="p-assistant">
+      <header class="tete-panneau"><h2>Assistant IA</h2><p>Poser une question sur le modèle ; l'IA lit les codes SysML.</p></header>
+      <div id="choixIA" class="choix-ia" role="radiogroup" aria-label="Assistant à utiliser"></div>
+      <div id="modeIA" class="choix-ia" role="radiogroup" aria-label="Type de raisonnement"></div>
+      <div id="etatIA" class="etat-ia"></div>
+      <p class="intro">Posez une question sur le modèle ou les données. L'IA reçoit <b>les passages des codes SysML liés à votre question</b>
+        (lignes numérotées comme dans l'onglet Export), la liste des codes et le résultat des contrôles, <b>pas l'Excel</b>, avec la consigne de
+        <b>se baser sur les codes</b>, de <b>ne rien inventer</b> et de citer le code et la ligne (ex. UC4 ligne 42).
+        Ses réponses sont des suggestions : rien n'est modifié.</p>
+      <div class="suggestions" id="suggestions"></div>
+      <div class="chat" id="chat"></div>
+      <form id="formChat" class="saisie">
+        <textarea id="question" rows="2" placeholder="Votre question sur les données… (Entrée pour envoyer, Maj+Entrée pour aller à la ligne)"></textarea>
+        <div class="actions-chat">
+          <button class="btn principal" type="submit" id="btnEnvoyer">Envoyer</button>
+          <button class="btn" type="button" id="btnInvite" title="Copie les données et la question, à coller dans Claude.ai ou ChatGPT">Copier pour un chat externe</button>
+          <button class="btn" type="button" id="btnEffacer">Nouvelle conversation</button>
+        </div>
+      </form>
+      <p class="note">À chaque question, la liste des codes et les passages des codes SysML liés à la question (6 000 tokens au plus avec la clé API,
+        16 000 avec Claude ou Codex) sont envoyés à l'assistant choisi, hors de
+        ce PC : Claude (ton abonnement, via Claude Code), Codex (ton abonnement ChatGPT, via Codex CLI) ou l'IA de la clé API (fichier <code>cle_api.txt</code>).
+        Sans assistant ou sans Internet : « Copier pour un chat externe ».</p>
+    </section>
+    <section class="panneau" id="p-traducteur">
+      <header class="tete-panneau"><h2>Comment fonctionne le traducteur</h2><p>Ce que fait le code Python, de l'Excel UserShaker aux codes SysML v2, et comment on sait que le résultat est fidèle.</p></header>
+
+      <div class="tr-bloc">
+        <h3>En une phrase</h3>
+        <p class="tr-intro">Le traducteur est le dossier Python <code>usershaker2sysml</code>. Il lit l'export UserShaker (.xlsx) sans jamais le modifier, contrôle les données, écrit un code SysML v2 par cas d'usage (plus un code entier), puis relit ces codes de façon indépendante pour vérifier qu'ils disent exactement la même chose que l'Excel. Le site (<code>interface/serveur.py</code>) et <code>traduire.bat</code> appellent tous les deux la même fonction : <code>traduire_complet</code>.</p>
+      </div>
+
+      <div class="tr-bloc">
+        <h3>Le parcours des données, étape par étape</h3>
+        <p class="tr-intro">Orchestré par <code>traduction_complete.py</code>. Si une étape trouve une erreur bloquante, la suite n'est pas faite : on ne produit pas un modèle faux.</p>
+        <div class="tr-flux">
+          <div class="tr-etape"><h4>Lire l'Excel</h4><span class="fic">lecture.py · schema.py</span>
+            <p>Chaque onglet devient une liste de lignes. Aucune valeur n'est transformée, sauf une cellule vide qui devient « non renseigné ».</p>
+            <p><code>schema.py</code> recopie le readme UserShaker 1.0 : colonnes, types, valeurs permises, clés.</p></div>
+          <div class="tr-etape"><h4>Contrôler les données</h4><span class="fic">controles.py</span>
+            <p>Codes <b>E..</b> (erreur : le schéma n'est pas respecté) et <b>A..</b> (avertissement : donnée valide mais incohérente ou incomplète).</p>
+            <p>Une erreur sur une donnée utilisée par le modèle bloque la traduction.</p></div>
+          <div class="tr-etape"><h4>Fabriquer les noms</h4><span class="fic">noms.py</span>
+            <p>« Welcome on board » → <code>WelcomeOnBoard</code> (définitions), « Jacques Martin » → <code>jacquesMartin</code> (usages).</p>
+            <p>Accents retirés, mot réservé SysML → suffixe <code>_</code>, chiffre en tête → préfixe <code>n</code>, doublon → <code>2</code>, <code>3</code>…</p></div>
+          <div class="tr-etape"><h4>Écrire le SysML</h4><span class="fic">rendu_cas_usage.py</span>
+            <p>Un code autonome par cas d'usage, en écriture compacte, sous la limite de CATIA Magic Community (20 000 caractères).</p>
+            <p>Plus un code entier, sans découpage, pour CATIA Magic complet.</p></div>
+          <div class="tr-etape"><h4>Relire et comparer</h4><span class="fic">relecture_complete.py</span>
+            <p>Les codes sont relus ligne à ligne <b>sans utiliser le traducteur</b>, puis comparés à l'Excel élément par élément.</p>
+            <p>Un écart (étape oubliée, ordre inversé, mauvais besoin…) donne l'erreur E21.</p></div>
+          <div class="tr-etape"><h4>Produire les livrables</h4><span class="fic">trace_xlsx.py · __main__.py · serveur.py</span>
+            <p>Les fichiers .sysml, le rapport, la traçabilité Excel ↔ SysML (onglets Lisez-moi, Traçabilité, Vérification).</p>
+            <p>Sur le site : téléchargement en zip ; en ligne de commande : dossier <code>sortie</code>.</p></div>
+        </div>
+      </div>
+
+      <div class="tr-bloc">
+        <h3>Correspondance UserShaker → SysML v2</h3>
+        <p class="tr-intro">Chaque élément garde son identifiant UserShaker et son nom exact de l'Excel, dans <code>doc /* id : nom */</code> ou entre crochets <code>[id]</code>. C'est ce qui permet de le retrouver.</p>
+        <table class="tr-table">
+          <thead><tr><th>Onglet de l'Excel</th><th>Écrit en SysML v2</th><th>Exemple</th></tr></thead>
+          <tbody>
+            <tr><td>meta (nom du projet)</td><td>un <code>package</code> par code</td><td><code>package UC1WelcomeOnBoard { … }</code></td></tr>
+            <tr><td>personas</td><td><code>part … : Persona</code> dans le package Personas, avec âge, genre, biographie</td><td><code>part jacquesMartin : Persona</code></td></tr>
+            <tr><td>components</td><td><code>part def</code> dans le package Components : rôle, catégorie, description, parent</td><td><code>part def Doors</code></td></tr>
+            <tr><td>component_states</td><td>un seul attribut texte par composant</td><td><code>states = "Locked [id] ; Unlocking [id] ; …"</code></td></tr>
+            <tr><td>user_needs</td><td><code>requirement</code> dans le package Needs : description, lien, nom de bibliothèque</td><td><code>requirement needBoardEasilyWithFamilyAndLuggage</code></td></tr>
+            <tr><td>use_cases</td><td><code>use case def</code> : description, story, status, folder</td><td><code>use case def WelcomeOnBoard</code></td></tr>
+            <tr><td>use_case_personas · use_case_components</td><td><code>actor</code> dans le cas d'usage ; les composants listés pour le cas d'usage sont écrits dans son code</td><td><code>actor jacquesMartin : Personas::Persona;</code></td></tr>
+            <tr><td>step_groups</td><td>un attribut texte dans le cas d'usage (groupe : étapes)</td><td><code>stepGroups = "Approach [id]: 1-2 ; …"</code></td></tr>
+            <tr><td>steps</td><td><code>action</code> dans le cas d'usage, numérotée dans l'ordre (position) : description, texte du déclencheur, note</td><td><code>action step01Approach</code></td></tr>
+            <tr><td>ordre des étapes</td><td><code>first … then …</code></td><td><code>first step01Approach then step02Unlock;</code></td></tr>
+            <tr><td>step_triggers</td><td>attribut <code>triggerEvent</code> ou <code>condition</code> dans l'action</td><td><code>triggerEvent = "Doors is Open"</code></td></tr>
+            <tr><td>step_user_needs</td><td><code>satisfy</code> dans l'action</td><td><code>satisfy Needs::needBoardEasily…;</code></td></tr>
+            <tr><td>step_component_states</td><td>la grille composant × étape : un attribut par composant dans le cas d'usage (numéro = position de l'étape, « &gt; » = états successifs dans la même étape)</td><td><code>gridDoors = "1: Locked ; 2: Unlocking &gt; Open ; …"</code></td></tr>
+            <tr><td>persona_step_feedback</td><td>un attribut <code>feedback</code> par étape : persona, émotion (-5 à +5), action, insight</td><td><code>feedback = "camilleMartin +2 | … | … [id]"</code></td></tr>
+            <tr><td>step_unused_components</td><td>attribut <code>unusedComponents</code> dans l'action</td><td>—</td></tr>
+          </tbody>
+        </table>
+        <p class="tr-intro" style="margin-top:8px">Colonnes non traduites (elles restent dans l'Excel) : les liens des images des étapes (<code>steps.image_url</code>), les couleurs (<code>personas.color</code>, <code>step_groups.color</code>) et les champs de bibliothèque des personas et composants (<code>library_id</code>, <code>library_name</code>, <code>library_link_mode</code>), ainsi que <code>library_id</code> des besoins, et dans l'onglet <code>meta</code> tout sauf le nom du projet et la date d'export.</p>
+      </div>
+
+      <div class="tr-bloc">
+        <h3>Les règles d'écriture</h3>
+        <div class="tr-regles">
+          <div class="tr-regle"><b>Limite de 20 000 caractères</b>C'est la limite du Textual Editor de CATIA Magic Community. La taille est comptée avec des fins de ligne Windows (2 caractères), pour ne jamais dépasser même après un copier-coller depuis le Bloc-notes (<code>taille_catia</code>).</div>
+          <div class="tr-regle"><b>Écriture compacte</b>Les données répétitives (états, grille, ressentis, groupes) sont regroupées dans des attributs texte, avec leurs identifiants entre crochets. Le code est bien plus court, sans perdre ces données.</div>
+          <div class="tr-regle"><b>Un code par cas d'usage</b>Chaque code est autonome : il contient les personas, composants et besoins dont il a besoin, et se colle seul dans son propre projet CATIA. Le nombre de cas d'usage est libre.</div>
+          <div class="tr-regle"><b>Découpage si trop long</b>Un cas d'usage qui dépasse la limite est coupé en parties, de préférence entre deux groupes d'étapes, sinon entre deux étapes. La partie 1 contient toutes les définitions. Si une étape seule ne tient pas, erreur E22.</div>
+          <div class="tr-regle"><b>Rien n'est perdu</b>Une persona, un composant ou un besoin rattaché à aucun cas d'usage est écrit avec le cas d'usage 1, pour que toute l'information de l'Excel soit dans les codes.</div>
+          <div class="tr-regle"><b>Code entier</b>Un seul code avec tous les cas d'usage (<code>package UseCases</code>), définitions partagées écrites une fois, sans limite de taille : pour CATIA Magic complet. S'il ne peut pas être produit : avertissement E23.</div>
+        </div>
+      </div>
+
+      <div class="tr-bloc">
+        <h3>Suivre un élément de votre fichier</h3>
+        <p class="tr-intro">Choisis un élément : on voit sa ligne dans l'Excel, l'endroit exact où il est écrit dans le SysML, et ce que la relecture a vérifié.</p>
+        <div class="tr-exemple" id="trExemple"><p class="vide">Disponible une fois le fichier traduit.</p></div>
+      </div>
+
+      <div class="tr-bloc">
+        <h3>Ce que fait chaque fichier Python</h3>
+        <table class="tr-table">
+          <thead><tr><th>Fichier</th><th>Rôle</th></tr></thead>
+          <tbody>
+            <tr><td><code>traduction_complete.py</code></td><td>Chef d'orchestre : contrôles → écriture → relecture → traçabilité. Renvoie les codes, les problèmes, la vérification.</td></tr>
+            <tr><td><code>lecture.py</code></td><td>Lit le .xlsx (ou des données déjà en mémoire) ; peut réécrire un xlsx corrigé, jamais l'original.</td></tr>
+            <tr><td><code>schema.py</code></td><td>Le contrat d'entrée : schéma UserShaker 1.0 recopié du readme. Rien n'est ajouté.</td></tr>
+            <tr><td><code>controles.py</code></td><td>Contrôles E.. / A.. avant traduction.</td></tr>
+            <tr><td><code>noms.py</code></td><td>Noms SysML valides et uniques, liste des mots réservés.</td></tr>
+            <tr><td><code>rendu_cas_usage.py</code></td><td>Écrit les codes (un par cas d'usage, découpage, code entier).</td></tr>
+            <tr><td><code>relecture_complete.py</code></td><td>Relit les codes sans le traducteur et les compare à l'Excel.</td></tr>
+            <tr><td><code>trace_xlsx.py</code></td><td>Fichier Excel de traçabilité.</td></tr>
+            <tr><td><code>apercu.py</code></td><td>Données lisibles pour l'onglet « Aperçu du modèle » et la matrice besoins × étapes.</td></tr>
+            <tr><td><code>modele_sysml.py</code></td><td>Relit les .sysml (et seulement eux) pour dessiner l'onglet « Modèle lu dans le SysML » et les analyses.</td></tr>
+            <tr><td><code>controle_omg.py</code></td><td>Contrôle facultatif de la grammaire officielle OMG avec SysML2Tools (si installé).</td></tr>
+            <tr><td><code>contexte_ia.py</code></td><td>Choisit les extraits des codes SysML envoyés à l'assistant IA, dans un budget de tokens.</td></tr>
+            <tr><td><code>__main__.py</code></td><td>Ligne de commande (utilisée par <code>traduire.bat</code>).</td></tr>
+            <tr><td><code>traduction.py</code>, <code>modele.py</code>, <code>rendu.py</code>, <code>verification.py</code></td><td>Ancienne traduction en un seul code résumé. Plus utilisée pour produire les codes, mais certaines de leurs fonctions servent encore (comparaison des noms, colonnes de traçabilité).</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="tr-bloc">
+        <h3>Lancer le traducteur sans le site</h3>
+        <p class="tr-intro"><code>traduire.bat</code>, ou dans un terminal : <code>python -m usershaker2sysml fichier.xlsx -o sortie</code>. Même traduction, mêmes contrôles, mêmes fichiers que le site.</p>
+      </div>
+    </section>
+    </div><!-- /contenu -->
+  </div>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const nb = (n, d = 0) => Number(n).toLocaleString("fr-FR", {minimumFractionDigits: d, maximumFractionDigits: d});
+const pluriel = (n, un, plusieurs) => `${nb(n)} ${n > 1 ? plusieurs : un}`;
+function dateFr(iso){
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(iso || "");
+  return m ? `${m[3]}/${m[2]}/${m[1]} à ${m[4]}:${m[5]}${/Z$/.test(iso) ? " (UTC)" : ""}` : (iso || "");
+}
+let R = null;
+let modeleMonte = false;      // onglet « Modèle lu dans le SysML » déjà chargé pour ce fichier
+let vueModele = null;         // le lecteur monté (sert aux liens de l'assistant)
+const E = {filtreC: "tout", vueV: "elements", filtreV: "tout", q: "", code: 0};
+
+function toast(t){ const e = $("#toast"); e.textContent = t; e.classList.add("vu"); clearTimeout(toast.t); toast.t = setTimeout(() => e.classList.remove("vu"), 2200); }
+
+// ================= fichier =================
+const depot = $("#depot"), entree = $("#entree");
+depot.addEventListener("click", () => entree.click());
+depot.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); entree.click(); } });
+$("#btnChanger").addEventListener("click", () => entree.click());
+entree.addEventListener("change", () => { if (entree.files[0]) envoyer(entree.files[0]); });
+["dragenter","dragover"].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); depot.classList.add("survol"); }));
+["dragleave","drop"].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); depot.classList.remove("survol"); }));
+document.addEventListener("drop", e => { const f = e.dataTransfer?.files?.[0]; if (f) envoyer(f); });
+
+async function envoyer(f){
+  $("#erreurLecture").classList.add("cache");
+  depot.classList.add("en-cours");
+  depot.querySelector(".titre").textContent = `Analyse de « ${f.name} »…`;
+  $("#infosFichier").innerHTML = `Analyse de <b>${esc(f.name)}</b>…`;
+  try{
+    const rep = await fetch("/api/analyser", {method: "POST", headers: {"X-Nom-Fichier": encodeURIComponent(f.name)}, body: f});
+    let j;
+    try { j = await rep.json(); } catch { throw new Error("Réponse illisible du serveur. La fenêtre noire est-elle toujours ouverte ?"); }
+    if (!rep.ok) throw new Error(j.erreur || "Erreur inconnue.");
+    R = j;
+    Object.assign(E, {filtreC: "tout", vueV: "elements", filtreV: "tout", q: "", code: 0});
+    $("#rechercheVerif").value = "";
+    afficher();
+  }catch(err){
+    const horsLigne = err instanceof TypeError;
+    document.body.classList.remove("app");
+    $("#resultat").classList.add("cache");
+    $("#barreFichier").classList.add("cache");
+    $("#zoneFichier").classList.remove("cache");
+    $("#erreurLecture").innerHTML = horsLigne
+      ? `Le serveur ne répond pas.<span>La fenêtre noire de <code>lancer_interface.bat</code> a peut-être été fermée : relancez-la puis rechargez cette page.</span>`
+      : `Fichier non analysé.<span>${esc(err.message)}</span>`;
+    $("#erreurLecture").classList.remove("cache");
+  }finally{
+    depot.classList.remove("en-cours");
+    depot.querySelector(".titre").innerHTML = "<strong>Choisir un fichier .xlsx</strong> ou le déposer ici";
+    entree.value = "";
+  }
+}
+
+// ================= accueil =================
+$("#btnChoisir").addEventListener("click", () => entree.click());
+// trait en U entre la ligne de l'Excel et la ligne de SysML (recalculé si la taille change)
+function tracerU(){
+  const f = $("#preuve"), p = $("#traitU");
+  if (!f || !f.offsetParent) return;
+  const r = f.getBoundingClientRect(), a = $("#preuveLigne").getBoundingClientRect(), c = $("#preuveCode").getBoundingClientRect();
+  const x0 = a.left - r.left, y0 = a.top + a.height / 2 - r.top, x1 = c.left - r.left, y1 = c.top + c.height / 2 - r.top;
+  const xr = 14, k = Math.max(0, Math.min(14, (y1 - y0) / 2));
+  p.setAttribute("d", `M${x0} ${y0}H${xr + k}Q${xr} ${y0} ${xr} ${y0 + k}V${y1 - k}Q${xr} ${y1} ${xr + k} ${y1}H${x1}`);
+  [["#boutA", x0, y0], ["#boutB", x1, y1]].forEach(([id, x, y]) => { $(id).setAttribute("cx", x); $(id).setAttribute("cy", y); });
+}
+tracerU();
+if (window.ResizeObserver) new ResizeObserver(tracerU).observe($("#preuve")); else addEventListener("resize", tracerU);
+document.fonts?.ready.then(tracerU);
+
+// ================= affichage général =================
+function etatDonnees(){
+  const P = R.problemes;
+  return {bloq: P.filter(p => p.bloque).length, err: P.filter(p => p.gravite === "erreur").length,
+          att: P.filter(p => p.gravite === "avertissement").length};
+}
+
+function afficher(){
+  const a = R.apercu, s = etatDonnees();
+  const V = R.verification || [], ecarts = V.filter(v => !v.ok).length;
+  $("#zoneFichier").classList.add("cache");
+  $("#barreFichier").classList.remove("cache");
+  $("#infosFichier").innerHTML = `<b>${esc(R.fichier)}</b><br><span>` +
+    (a ? `Projet ${esc(a.projet)}, exporté le ${esc(dateFr(a.export))}` : "Fichier lu, aucun modèle produit") + "</span>";
+
+  // bandeau
+  const b = $("#bandeau");
+  if (!R.traduit){
+    b.className = "bandeau err";
+    b.innerHTML = `<i class="pastille"></i>Aucun modèle produit. <span class="detail">${pluriel(s.bloq, "erreur bloquante", "erreurs bloquantes")} à corriger dans les données.</span>`;
+  } else if (R.ok && s.err === 0){
+    b.className = "bandeau ok";
+    b.innerHTML = `<i class="pastille"></i>Modèle prêt pour CATIA. <span class="detail">${s.att ? pluriel(s.att, "avertissement", "avertissements") + " à remonter à l'équipe UX." : "Aucun problème détecté dans les données."}</span>`;
+  } else {
+    b.className = "bandeau att";
+    b.innerHTML = `<i class="pastille"></i>Modèle produit, à vérifier. <span class="detail">${pluriel(s.err, "erreur", "erreurs")}, ${pluriel(s.att, "avertissement", "avertissements")}.</span>`;
+  }
+
+  // résumé en 3 étapes
+  const c1 = s.bloq ? ["err", pluriel(s.bloq, "erreur bloquante", "erreurs bloquantes"), s.bloq > 1 ? "La traduction est impossible tant qu'elles ne sont pas corrigées." : "La traduction est impossible tant qu'elle n'est pas corrigée."]
+           : s.err ? ["att", pluriel(s.err, "erreur", "erreurs"), "Le modèle est produit, mais une partie des données ne respecte pas le schéma."]
+           : s.att ? ["att", pluriel(s.att, "avertissement", "avertissements"), "Données valides ; points à remonter à l'équipe UX."]
+           : ["ok", "Aucun problème", "Les données respectent le schéma UserShaker et sont cohérentes."];
+  const c2 = !R.traduit ? ["inactif", "Pas de traduction", "Corriger d'abord les erreurs bloquantes."]
+           : ecarts ? ["err", pluriel(ecarts, "écart", "écarts"), `sur ${nb(V.length)} éléments relus dans les codes.`]
+           : ["ok", `${nb(V.length)}/${nb(V.length)} conformes`, "Les codes SysML relus correspondent à l'Excel."];
+  let c3;
+  if (!R.traduit) c3 = `<div class="etape-resume inactif"><span class="num">3. Prêt pour CATIA</span><span class="valeur">Rien à copier</span><span class="explic">Aucun modèle produit.</span></div>`;
+  else {
+    const C = R.codes, max = Math.max(...C.map(c => c.taille_catia));
+    const pc = Math.round(100 * max / R.limite), coul = pc > 100 ? "var(--err)" : "var(--ok)";
+    const cl = R.ok ? "ok" : "att";
+    c3 = `<div class="etape-resume ${cl}" data-aller="export" role="button" tabindex="0">
+      <span class="num">3. Prêt pour CATIA</span>
+      <span class="valeur">${pluriel(C.length, "code", "codes")} <span class="explic">un par cas d'usage, un projet CATIA chacun</span></span>
+      <div class="jauge" title="Le plus gros code, sur ${nb(R.limite)} caractères au plus par code (CATIA Magic Community)"><i style="width:${Math.min(pc, 100)}%;background:${coul}"></i></div>
+      <span class="explic">${pc > 100 ? "Un code dépasse la limite de CATIA." : `Le plus gros : ${nb(max)} / ${nb(R.limite)} caractères.`}</span>
+      <span class="lien">Voir et copier les codes</span></div>`;
+  }
+  const carte = (n, titre, [cl, val, ex], cible) =>
+    `<div class="etape-resume ${cl}" ${cl === "inactif" ? "" : `data-aller="${cible}" role="button" tabindex="0"`}>
+      <span class="num">${n}. ${titre}</span><span class="valeur">${esc(val)}</span><span class="explic">${esc(ex)}</span>
+      ${cl === "inactif" ? "" : `<span class="lien">Voir le détail</span>`}</div>`;
+  $("#resume").innerHTML = carte(1, "Données UserShaker", c1, "controles") + carte(2, "Traduction vérifiée", c2, "verif") + c3;
+
+  // compteurs
+  $("#compteurs").innerHTML = a ? Object.entries(a.compteurs).map(([k, v]) => `<span><b>${nb(v)}</b> ${esc(k)}</span>`).join("") : "";
+
+  // badges des onglets
+  const bc = $("#bControles");
+  bc.className = "badge " + (s.bloq ? "err" : s.err || s.att ? "att" : "ok");
+  bc.textContent = R.problemes.length ? nb(R.problemes.length) : "✓";
+  const bv = $("#bVerif");
+  bv.className = "badge " + (!R.traduit ? "" : ecarts ? "err" : "ok");
+  bv.textContent = !R.traduit ? "–" : ecarts ? nb(ecarts) : "✓";
+  ["verif","apercu","matrice","modele","export"].forEach(p => document.querySelector(`[data-p="${p}"]`).disabled = !R.traduit);
+  $("#modeleZone").innerHTML = ""; modeleMonte = false;
+  if (window.RMonieAnalyses) RMonieAnalyses.oublier();
+  $$("#vueAnalyses button").forEach(x => x.classList.toggle("actif", x.dataset.analyse === "matrice"));
+  $("#analyseMatrice").hidden = false; $("#analyseAutre").hidden = true;      // l'onglet relira les nouveaux codes à son ouverture
+
+  controles(); verif(); apercu(); matrice(); exporter(); initAssistant();
+  $("#resultat").classList.remove("cache");
+  ouvrir("tableau", false);
+}
+
+// ================= 1. contrôles =================
+function controles(){
+  const P = R.problemes, s = etatDonnees();
+  const choix = [["tout", "Tout", P.length], ["bloque", "Bloquants", s.bloq], ["erreur", "Erreurs", s.err], ["avertissement", "Avertissements", s.att]];
+  $("#filtresC").innerHTML = choix.map(([k, t, n]) => `<button data-f="${k}" class="${E.filtreC === k ? "actif" : ""}">${t} (${nb(n)})</button>`).join("");
+  const L = P.filter(p => E.filtreC === "tout" ? true : E.filtreC === "bloque" ? p.bloque : p.gravite === E.filtreC);
+  if (!P.length){ $("#tableControles").innerHTML = '<p class="vide bien">✓ Aucun problème : les données respectent le schéma UserShaker et sont cohérentes.</p>'; return; }
+  if (!L.length){ $("#tableControles").innerHTML = '<p class="vide">Aucun problème dans cette catégorie.</p>'; return; }
+  const rang = p => p.bloque ? 0 : p.gravite === "erreur" ? 1 : 2;
+  const T = [...L].sort((x, y) => rang(x) - rang(y));
+  let h = "<table><thead><tr><th>Gravité</th><th>Code</th><th>Où dans l'Excel</th><th>Problème</th><th>Id UserShaker</th></tr></thead><tbody>";
+  for (const p of T){
+    const tag = p.bloque ? '<span class="tag bloq">bloquant</span>' : p.gravite === "erreur" ? '<span class="tag err">erreur</span>' : '<span class="tag att">avertissement</span>';
+    const ou = [p.onglet ? `onglet <b>${esc(p.onglet)}</b>` : "", p.ligne ? `ligne ${p.ligne}` : "", p.colonne ? `colonne ${esc(p.colonne)}` : ""].filter(Boolean).join(", ") || "fichier";
+    h += `<tr><td>${tag}</td><td class="mono">${esc(p.code)}</td><td>${ou}</td><td>${esc(p.message)}</td><td class="id">${esc(p.id)}</td></tr>`;
+  }
+  $("#tableControles").innerHTML = h + "</tbody></table>";
+}
+$("#filtresC").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; E.filtreC = b.dataset.f; controles(); });
+
+// ================= 2. vérification =================
+function nomCode(k){ const c = R?.codes?.[k]; return c ? `UC${c.numero}${c.parties > 1 ? "-P" + c.partie : ""}` : "?"; }
+function lienLigne(n, k){ return n ? `<a class="lien-ligne" data-ligne="${n}" data-code="${k ?? 0}" title="${esc(R?.codes?.[k ?? 0]?.fichier || "")}">${esc(nomCode(k ?? 0))} ligne ${n}</a>` : "—"; }
+const AUTRES = ["Infos", "États", "Groupe", "Textes", "Grille", "Ressentis", "Non utilisés"];
+function court(v, n = 160){ const s = Array.isArray(v) ? v.join(" ; ") : String(v ?? ""); return s.length > n ? s.slice(0, n - 1) + "…" : s; }
+function puceCritere(c){
+  const titre = c.ok ? `Identique dans l'Excel et dans le SysML :\n${court(c.excel, 600)}` : `Excel : ${court(c.excel, 400)}\nSysML : ${court(c.sysml, 400)}`;
+  return `<span class="crit-mini ${c.ok ? "ok" : "ko"}" title="${esc(titre)}">${esc(c.nom)} ${c.ok ? "✓" : "✗"}</span>`;
+}
+function autresCriteres(v){
+  const L = (v.criteres || []).filter(c => AUTRES.includes(c.nom));
+  if (!L.length) return '<span class="note">—</span>';
+  return L.map(puceCritere).join("") + L.filter(c => !c.ok).map(c => `<div class="ecart-txt">${esc(c.nom)} : ${esc(c.ecart)}</div>`).join("");
+}
+const liste = v => Array.isArray(v) ? (v.length ? `<ul class="petite-liste">${v.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : '<span class="note">aucun</span>') : esc(v);
+const puces = v => Array.isArray(v) ? (v.length ? v.map(x => `<span class="puce">${esc(x)}</span>`).join("") : '<span class="note">aucun</span>') : esc(v);
+function cellule(c, rendu = esc, renduSysml){
+  if (!c) return "<td></td>";
+  if (c.ok) return `<td class="c-ok"><div class="cv"><div>${rendu(c.excel)}</div><span class="coche" title="identique dans l'Excel et dans le SysML">✓</span></div></td>`;
+  return `<td class="c-ko"><div><span class="etq">Excel</span>${rendu(c.excel)}</div><div><span class="etq">SysML</span>${(renduSysml || rendu)(c.sysml)}</div><div class="ecart-txt">${esc(c.ecart)}</div></td>`;
+}
+const crit = (v, nom) => (v.criteres || []).find(c => c.nom === nom);
+const statut = v => v.ok ? '<span class="tag ok">conforme</span>' : '<span class="tag bloq">écart</span>';
+const correspond = o => !E.q || JSON.stringify(o).toLowerCase().includes(E.q);
+
+function verif(){
+  if (!R.traduit){ $("#resumeVerif").innerHTML = ""; $("#tableVerif").innerHTML = '<p class="vide">Pas de SysML à vérifier : corriger d\'abord les erreurs bloquantes.</p>'; return; }
+  const V = R.verification, ok = V.filter(v => v.ok).length;
+  $("#resumeVerif").innerHTML = ok === V.length
+    ? `<div class="resume-verif ok">✓ ${nb(ok)}/${nb(V.length)} éléments conformes. <span>${R.codes.length > 1 ? `Les ${nb(R.codes.length)} codes relus correspondent` : "Le code relu correspond"} à l'Excel.</span></div>`
+    : `<div class="resume-verif ko">${pluriel(V.length - ok, "écart", "écarts")} sur ${nb(V.length)} éléments. <span>Voir les lignes marquées en rouge.</span></div>`;
+  $$("#vueVerif button").forEach(b => b.classList.toggle("actif", b.dataset.v === E.vueV));
+  $$("#filtreVerif button").forEach(b => b.classList.toggle("actif", b.dataset.f === E.filtreV));
+  $("#filtreVerif").classList.toggle("cache", E.vueV !== "elements");
+  $("#tableVerif").innerHTML = E.vueV === "elements" ? vueElements(V) : vueTrace();
+}
+
+function garder(v){ return (E.filtreV === "tout" || !v.ok) && correspond(v); }
+
+function groupe(titre, sous, lignes, total, ouvert, corps){
+  const nOk = lignes.filter(v => v.ok).length;
+  const tag = nOk === total ? `<span class="tag ok">${nb(nOk)}/${nb(total)} conformes</span>` : `<span class="tag bloq">${pluriel(total - nOk, "écart", "écarts")}</span>`;
+  return `<details class="groupe" ${ouvert ? "open" : ""}><summary><span class="g-titre">${titre}</span><span class="g-sous">${sous}</span>${tag}</summary>${corps}</details>`;
+}
+
+function tableSimple(L){
+  let h = '<table class="verif"><thead><tr><th>Ligne Excel</th><th>Nom dans l\'Excel</th><th>Nom dans le SysML</th><th title="Survoler une pastille pour voir les valeurs">Autres critères</th><th>Texte SysML</th><th>Statut</th></tr></thead><tbody>';
+  for (const v of L){
+    const c = crit(v, "Nom") || crit(v, "Présence");
+    h += `<tr class="${v.ok ? "" : "ligne-ecart"}"><td>${v.ligne_excel ?? "?"}</td>
+      ${c && c.nom === "Nom" ? (c.ok ? `<td>${esc(v.nom_excel)}</td><td class="sysml-nom">${esc(v.nom_sysml)}<span class="coche">✓</span></td>` : `<td class="c-ko">${esc(v.nom_excel)}</td><td class="c-ko sysml-nom">${esc(v.nom_sysml)}<div class="ecart-txt">${esc(c.ecart)}</div></td>`)
+        : `<td>${esc(v.nom_excel)}</td><td class="c-ko">${esc(v.ecarts.join(" ; "))}</td>`}
+      <td>${autresCriteres(v)}</td><td>${lienLigne(v.ligne_sysml, v.code)}</td><td>${statut(v)}</td></tr>`;
+  }
+  return h + "</tbody></table>";
+}
+
+function vueElements(V){
+  const filtre = E.filtreV !== "tout" || E.q;
+  let h = "";
+  for (const [cat, titre, sous] of [["Persona", "Personas", "onglet personas → part"], ["Composant", "Composants", "onglet components → part def"], ["Besoin", "Besoins utilisateur", "onglet user_needs → requirement"]]){
+    const tous = V.filter(v => v.categorie === cat), L = tous.filter(garder);
+    if (!L.length) continue;
+    h += groupe(titre, sous, tous, tous.length, filtre || tous.some(v => !v.ok), tableSimple(L));
+  }
+  const ucs = V.filter(v => v.categorie === "Cas d'usage");
+  ucs.forEach((u, k) => {
+    const etapes = V.filter(v => v.categorie === "Étape" && v.parent === u.id);
+    const ucGarde = garder(u);
+    // si la recherche vise le cas d'usage lui-même, on montre toutes ses étapes (sauf filtre « écarts »)
+    const toutes = ucGarde && E.q && E.filtreV === "tout";
+    const L = toutes ? etapes : etapes.filter(garder);
+    if (!ucGarde && !L.length) return;
+    const crits = (u.criteres || []).map(c => {
+      const val = court(Array.isArray(c.excel) ? c.excel.join(", ") : c.excel, 140);
+      const nomSys = c.nom === "Nom" ? ` → <span class="sysml-nom">${esc(c.sysml)}</span>` : "";
+      return c.ok ? `<span class="crit-uc"><span class="n">${esc(c.nom)}</span>${esc(val)}${nomSys}<span class="coche">✓</span></span>`
+                  : `<span class="crit-uc ko"><span class="n">${esc(c.nom)}</span>Excel : ${esc(val)} · SysML : ${esc(court(Array.isArray(c.sysml) ? c.sysml.join(", ") : c.sysml, 140))}<div class="ecart-txt">${esc(c.ecart)}</div></span>`;
+    }).join("") + `<span class="crit-uc"><span class="n">Texte SysML</span>${lienLigne(u.ligne_sysml, u.code)}</span>`;
+    let t = "";
+    if (L.length){
+      t = '<table class="verif"><thead><tr><th title="Rang de l\'étape : colonne position de l\'Excel, comparée à l\'ordre first … then … du SysML">Rang</th><th>Étape dans l\'Excel</th><th>Action SysML</th><th>Déclencheurs</th><th>Besoins servis</th><th title="Survoler une pastille pour voir les valeurs">Groupe, textes, grille, ressentis</th><th>Statut</th></tr></thead><tbody>';
+      for (const v of L){
+        const pres = crit(v, "Présence");
+        if (pres){
+          t += `<tr class="ligne-ecart"><td>?</td><td>${esc(v.nom_excel)}<div class="id">steps, ligne ${v.ligne_excel ?? "?"}</div></td><td class="c-ko" colspan="4">${esc(pres.ecart)}</td><td>${statut(v)}</td></tr>`;
+          continue;
+        }
+        const cr = crit(v, "Rang");
+        t += `<tr class="${v.ok ? "" : "ligne-ecart"}">${cellule(cr, x => `<span class="rang">${esc(x)}</span>`)}
+          <td>${esc(v.nom_excel)}<div class="id">steps, ligne ${v.ligne_excel ?? "?"}</div></td>
+          ${cellule(crit(v, "Nom"), () => `<span class="sysml-nom">${esc(v.nom_sysml)}</span>`, x => `<span class="sysml-nom">${esc(x)}</span>`)}
+          ${cellule(crit(v, "Déclencheurs"), liste)}
+          ${cellule(crit(v, "Besoins servis"), puces)}
+          <td>${autresCriteres(v)}</td>
+          <td>${statut(v)}<div style="margin-top:4px">${lienLigne(v.ligne_sysml, v.code)}</div></td></tr>`;
+      }
+      t += "</tbody></table>";
+    }
+    h += groupe(`Cas d'usage ${k + 1} : ${esc(u.nom_excel)}`, `${pluriel(etapes.length, "étape", "étapes")}`, [u, ...etapes], etapes.length + 1, true,
+                `<div class="criteres-uc">${crits}</div>${t}`);
+  });
+  return h || '<p class="vide">Aucun élément ne correspond.</p>';
+}
+
+function vueTrace(){
+  const L = R.trace_detail.filter(correspond);
+  if (!L.length) return '<p class="vide">Aucune correspondance ne correspond à la recherche.</p>';
+  let h = `<p class="note" style="margin-top:0">${pluriel(L.length, "correspondance", "correspondances")} : chaque ligne de l'Excel traduite, et l'endroit où elle se trouve dans les codes.</p>`;
+  h += '<table class="verif"><thead><tr><th>Où dans l\'Excel</th><th>Ce que dit l\'Excel</th><th>Devenu en SysML</th><th>Élément SysML</th><th>Texte SysML</th></tr></thead><tbody>';
+  for (const t of L){
+    h += `<tr><td>${esc(t.onglet_excel)}<div class="id">ligne ${t.ligne_excel ?? "?"}</div></td><td>${esc(t.dans_excel)}</td>
+      <td>${esc(t.type_sysml)}</td><td class="sysml-nom">${esc(t.element_sysml)}</td><td>${lienLigne(t.ligne_sysml, t.code)}</td></tr>`;
+  }
+  return h + "</tbody></table>";
+}
+
+$("#vueVerif").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; E.vueV = b.dataset.v; verif(); });
+$("#filtreVerif").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; E.filtreV = b.dataset.f; verif(); });
+$("#rechercheVerif").addEventListener("input", e => { E.q = e.target.value.trim().toLowerCase(); verif(); });
+document.addEventListener("click", e => {
+  const a = e.target.closest("a.lien-ligne"); if (!a) return;
+  memoriserRetour("export", a.closest("tr") || a);
+  if (versionCatia !== "community"){ versionCatia = "community"; E.code = +a.dataset.code || 0; exporter(); }   // les liens visent les codes par cas d'usage
+  else if (+a.dataset.code !== E.code){ E.code = +a.dataset.code || 0; montrerCode(); }
+  ouvrir("export", false);
+  $$("pre.code .vise").forEach(x => x.classList.remove("vise"));
+  const l = document.getElementById("L" + a.dataset.ligne);
+  if (l){
+    l.classList.add("vise");
+    const pre = $("#code");
+    pre.scrollTop = l.offsetTop - pre.clientHeight / 3;
+    pre.scrollIntoView({behavior: "smooth", block: "center"});
+  }
+});
+
+// ================= 3. aperçu =================
+function nomsBesoins(){ const m = {}; (R.apercu?.besoins || []).forEach(b => m[b.id] = b.nom); return m; }
+function apercu(){
+  if (!R.apercu){ $("#apercu").innerHTML = '<p class="vide">Pas d\'aperçu : corriger d\'abord les erreurs bloquantes.</p>'; return; }
+  const nbes = nomsBesoins(), U = R.apercu.cas_usage;
+  let h = `<nav class="nav-uc">${U.map((u, k) => `<a href="#uc-${esc(u.id)}">${k + 1}. ${esc(u.nom)}</a>`).join("")}</nav>`;
+  U.forEach((uc, k) => {
+    h += `<div class="uc" id="uc-${esc(uc.id)}"><div class="uc-tete"><h3>${k + 1}. ${esc(uc.nom)}</h3>
+      <div class="sous"><code>use case def ${esc(uc.sysml)}</code>, ${pluriel(uc.etapes.length, "étape", "étapes")}</div>
+      <div>${uc.acteurs.map(a => `<span class="acteur">${esc(a)}</span>`).join("") || '<span class="note">aucun acteur</span>'}</div></div><ol class="etapes">`;
+    for (const e of uc.etapes){
+      const dec = e.declencheurs.map(d => `<div class="ligne-info"><b>${d.type === "déclencheur" ? "Quand" : "Et si"}</b> ${esc(d.texte)}</div>`).join("")
+                  || '<div class="ligne-info">Pas de déclencheur structuré.</div>';
+      const bes = e.besoins.map(id => `<span class="puce">${esc(nbes[id] || id)}</span>`).join("") || '<span class="note">aucun besoin</span>';
+      h += `<li><div class="num-etape">${e.position}</div><div><div class="etape-nom">${esc(e.nom)} <span class="id">${esc(e.sysml)}</span></div>${dec}<div class="ligne-info"><b>Sert</b> ${bes}</div></div></li>`;
+    }
+    h += "</ol></div>";
+  });
+  $("#apercu").innerHTML = h;
+}
+
+// ================= 4. matrice =================
+function matrice(){
+  if (!R.apercu){ $("#matrice").innerHTML = ""; return; }
+  const U = R.apercu.cas_usage.filter(u => u.etapes.length);
+  let h = '<table class="matrice"><thead><tr><th class="besoin-nom" rowspan="2">Besoin utilisateur</th>';
+  for (const u of U) h += `<th class="uc-col" colspan="${u.etapes.length}">${esc(u.nom)}</th>`;
+  h += '<th rowspan="2">Nb d\'étapes</th></tr><tr>';
+  for (const u of U) for (const e of u.etapes)
+    h += `<th class="etape-col ${e.besoins.length ? "" : "sans-besoin"}" title="${esc(e.nom)}"><span>${e.position}. ${esc(e.nom)}</span></th>`;
+  h += "</tr></thead><tbody>";
+  for (const b of R.apercu.besoins){
+    h += `<tr class="${b.nb_etapes ? "" : "non-couvert"}"><td class="besoin-nom">${esc(b.nom)}</td>`;
+    for (const u of U) for (const e of u.etapes) h += e.besoins.includes(b.id) ? `<td class="x" title="${esc(e.nom)} sert « ${esc(b.nom)} »">●</td>` : "<td></td>";
+    h += `<td class="total">${b.nb_etapes}</td></tr>`;
+  }
+  $("#matrice").innerHTML = h + "</tbody></table>";
+}
+
+// ================= 5. export =================
+// version de CATIA chez le client : Community (un code par cas d'usage, 20 000 caractères au plus)
+// ou complète (le code entier, sans limite de taille)
+let versionCatia = "community";
+function codesAffiches(){ return versionCatia === "complete" && R.code_entier ? [R.code_entier] : (R.codes || []); }
+function nomAffiche(k){ return versionCatia === "complete" ? "Code entier" : nomCode(k); }
+$("#versionCatia").addEventListener("click", e => {
+  const b = e.target.closest("[data-version]"); if (!b || !R) return;
+  versionCatia = b.dataset.version; E.code = 0; exporter();
+});
+function exporter(){
+  if (!R.code_entier) versionCatia = "community";
+  const C = codesAffiches(), entier = versionCatia === "complete";
+  $$("#versionCatia button").forEach(b => b.classList.toggle("actif", b.dataset.version === versionCatia));
+  $("#versionCatia [data-version='complete']").disabled = !R.code_entier;
+  $("#etapeProjet").innerHTML = entier ? "Un <b>nouveau projet SysML v2 vide</b> : le code entier contient tous les cas d'usage."
+                                       : "Un <b>nouveau projet SysML v2 vide par code</b> (les cas d'usage sont indépendants).";
+  if (E.code >= C.length) E.code = 0;
+  $("#codesOnglets").innerHTML = C.map((c, k) => {
+    const pc = Math.round(100 * c.taille_catia / R.limite), coul = pc > 100 ? "var(--err)" : "var(--ok)";
+    return `<button data-code="${k}" class="${k === E.code ? "actif" : ""}" title="${esc(c.fichier)}"><b>${esc(nomAffiche(k))}</b> ${esc(c.cas_usage)}
+      <small>${pluriel(c.etapes, "étape", "étapes")}, ${nb(c.caracteres)} caractères</small>
+      ${entier ? `<small>relu : ${nb(c.verification_ok)}/${nb(c.verification_total)} conformes</small>` : `<div class="jauge"><i style="width:${Math.min(pc, 100)}%;background:${coul}"></i></div>`}</button>`;
+  }).join("");
+  montrerCode();
+  $("#nonTraduit").innerHTML = Object.entries(R.non_traduit).map(([k, v]) => `<li>${esc(v)} <span class="id">(${esc(k)})</span></li>`).join("");
+  let h = '<table><thead><tr><th>Données de l\'Excel</th><th>Attendues</th><th>Dans les codes</th><th></th></tr></thead><tbody>';
+  for (const l of R.couverture) h += `<tr><td>${esc(l.onglet)}</td><td>${nb(l.attendus)}</td><td>${nb(l.trouves)}</td><td>${l.ok ? '<span class="tag ok">complet</span>' : '<span class="tag err">manque</span>'}</td></tr>`;
+  $("#couverture").innerHTML = R.couverture.length ? h + "</tbody></table>" : "";
+}
+function montrerCode(){
+  const c = codesAffiches()[E.code];
+  $$("#codesOnglets button").forEach(b => b.classList.toggle("actif", +b.dataset.code === E.code));
+  if (!c){ $("#codeInfos").innerHTML = ""; $("#code").innerHTML = ""; return; }
+  $("#codeInfos").innerHTML = versionCatia === "complete"
+    ? `<span><b>${esc(c.fichier)}</b>, ${esc(c.cas_usage)}, ${nb(c.caracteres)} caractères, ${nb(c.lignes)} lignes, sans découpage
+      (au-delà de la limite de 20 000 caractères de CATIA Magic Community). Relu et comparé à l'Excel :
+      ${nb(c.verification_ok)}/${nb(c.verification_total)} éléments conformes, ${nb(c.lignes_excel_retrouvees)}/${nb(c.lignes_excel)} lignes retrouvées.</span>
+    <button class="btn principal" data-copier-code>Copier ce code</button><button class="btn" data-telecharger-code>Télécharger .sysml</button>`
+    : `<span><b>${esc(c.fichier)}</b>, cas d'usage ${c.numero}${c.parties > 1 ? `, partie ${c.partie}/${c.parties}` : ""},
+    ${nb(c.caracteres)} caractères (${nb(c.taille_catia)} au pire) sur ${nb(R.limite)}, ${nb(c.lignes)} lignes</span>
+    <button class="btn principal" data-copier-code>Copier ce code</button><button class="btn" data-telecharger-code>Télécharger .sysml</button>`;
+  $("#code").innerHTML = c.texte.replace(/\n$/, "").split("\n")
+    .map((l, i) => `<span class="l" id="L${i + 1}"><span class="n">${i + 1}</span>${esc(l)}</span>`).join("");
+  $("#code").scrollTop = 0;
+}
+$("#codesOnglets").addEventListener("click", e => { const b = e.target.closest("button[data-code]"); if (!b) return; E.code = +b.dataset.code; montrerCode(); });
+$("#codeInfos").addEventListener("click", e => {
+  if (e.target.closest("[data-copier-code]")) copier();
+  if (e.target.closest("[data-telecharger-code]")){ const c = codesAffiches()[E.code]; telecharger(c.fichier, c.texte, "text/plain;charset=utf-8"); }
+});
+function telecharger(nom, contenu, type){
+  const blob = contenu instanceof Blob ? contenu : new Blob([contenu], {type});
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = nom;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+}
+async function copier(){
+  const c = R ? codesAffiches()[E.code] : null; if (!c) return;
+  try { await navigator.clipboard.writeText(c.texte); }
+  catch { const t = document.createElement("textarea"); t.value = c.texte; document.body.appendChild(t); t.select(); document.execCommand("copy"); t.remove(); }
+  toast(`${nomAffiche(E.code)} copié : à coller dans le Textual Editor d'un nouveau projet CATIA`);
+}
+async function telechargerServeur(chemin, nom, quoi){
+  try{
+    const rep = await fetch(chemin + "?jeton=" + encodeURIComponent(R.jeton));
+    if (!rep.ok){ const j = await rep.json().catch(() => ({})); throw new Error(j.erreur || "téléchargement impossible"); }
+    telecharger(nom, await rep.blob());
+  }catch(err){ toast(err instanceof TypeError ? "Le serveur ne répond pas : relancer lancer_interface.bat" : quoi + " : " + err.message); }
+}
+$("#btnCopier").onclick = copier;
+$("#btnZip").onclick = () => telechargerServeur("/api/codes.zip", R.package + "_codes_sysml.zip", "Codes");
+$("#btnRapport").onclick = () => telecharger((R.package || "rapport") + "_rapport.txt", R.rapport, "text/plain;charset=utf-8");
+$("#btnTrace").onclick = () => telechargerServeur("/api/trace.xlsx", R.package + "_trace.xlsx", "Traçabilité");
+
+// ================= 6. assistant IA =================
+let conversation = [];
+const QUESTIONS_TYPES = [
+  "Quels besoins utilisateur sont peu ou pas couverts par les étapes ?",
+  "Y a-t-il des incohérences entre le texte libre des déclencheurs et les déclencheurs structurés ?",
+  "Quelles étapes ont des émotions négatives, et que disent les données à leur sujet ?",
+  "Quelles informations manquent pour l'ingénierie système (conditions, états, besoins) ?",
+  "Résume chaque cas d'usage en deux lignes.",
+  "Où voir sur le site quels composants changent d'état à chaque étape ?",
+];
+const QUESTION_BLOQUE = "Explique les erreurs bloquantes et comment les corriger dans UserShaker.";
+
+function mdLeger(t){
+  // mise en forme simple et sûre : on échappe d'abord, puis gras, code, listes, tableaux
+  const lignes = esc(t).split("\n"); let h = "", liste = null, tab = [];
+  const inline = x => x.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`([^`]+)`/g, "<code>$1</code>");
+  const fermerListe = () => { if (liste){ h += `</${liste}>`; liste = null; } };
+  const fermerTab = () => {
+    if (!tab.length) return;
+    const lig = tab.filter(l => !/^\|?\s*:?-{2,}/.test(l.replace(/\|/g, "|").trim()));
+    const cell = l => l.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map(c => inline(c.trim()));
+    h += "<table>" + lig.map((l, k) => "<tr>" + cell(l).map(c => k === 0 ? `<th>${c}</th>` : `<td>${c}</td>`).join("") + "</tr>").join("") + "</table>";
+    tab = [];
+  };
+  for (const brut of lignes){
+    const l = brut.trimEnd();
+    if (/^\s*\|.*\|\s*$/.test(l)){ fermerListe(); tab.push(l); continue; }
+    fermerTab();
+    let m;
+    if ((m = /^\s*[-*•]\s+(.*)$/.exec(l))){ if (liste !== "ul"){ fermerListe(); h += "<ul>"; liste = "ul"; } h += `<li>${inline(m[1])}</li>`; continue; }
+    if ((m = /^\s*\d+[.)]\s+(.*)$/.exec(l))){ if (liste !== "ol"){ fermerListe(); h += "<ol>"; liste = "ol"; } h += `<li>${inline(m[1])}</li>`; continue; }
+    fermerListe();
+    if ((m = /^#{1,6}\s+(.*)$/.exec(l))){ h += `<p><b>${inline(m[1])}</b></p>`; continue; }
+    if (l.trim()) h += `<p>${inline(l)}</p>`;
+  }
+  fermerListe(); fermerTab();
+  return liensNavigation(h);
+}
+// liens de navigation écrits par l'assistant : [[aller:section]] ou [[aller:section/vue]] -> bouton
+const SOUS_VUES = {verif: {elements: "Par élément", trace: "Toutes les correspondances"},
+  modele: {ensemble: "Vue d'ensemble", cas: "Cas d'usage", composant: "Composants", trace: "Traçabilité"},
+  matrice: {matrice: "Besoins × étapes", couverture: "Couverture des besoins", emotions: "Parcours émotionnel", composants: "Composants × étapes"}};
+function liensNavigation(h){
+  return h.replace(/\[\[aller:([a-z]+)(?:\/([a-z]+))?(?:\/([A-Za-z0-9_]+))?\]\]/g, (tout, p, v, nom) => {
+    if (!document.querySelector(`.onglets [data-p="${p}"]`)) return "";
+    const sous = v && SOUS_VUES[p]?.[v] ? v : "";
+    nom = nom && (p === "modele" || p === "verif") ? nom : "";
+    const lib = nom ? ((R?.verification || []).find(x => x.nom_sysml === nom)?.nom_excel || nom) : "";
+    return `<button type="button" class="lien-aller" data-aller-ia="${p}" data-sous="${sous}" data-nom="${esc(nom)}">→ ${esc(nomSection(p))}${sous ? " › " + esc(SOUS_VUES[p][sous]) : ""}${lib ? " › " + esc(lib) : ""}</button>`;
+  });
+}
+
+let choixIA = null;                       // "claude" | "codex" | "api" ; null = celui proposé par défaut
+let modeIA = null;                        // "rapide" | "pousse" (Claude et Codex) ; null = mode par défaut
+const NOMS_IA = {claude: "Claude", codex: "Codex", api: "Clé API"};
+function modeActif(a){
+  const c = a?.fournisseurs?.[fournisseurActif(a)] || {}, modes = c.modes || {};
+  return (modeIA && modes[modeIA]) ? modeIA : (c.mode_defaut || null);
+}
+function afficherModeIA(a){
+  const c = a?.fournisseurs?.[fournisseurActif(a)] || {}, modes = c.modes || {}, actif = modeActif(a), z = $("#modeIA");
+  if (!Object.keys(modes).length){ z.innerHTML = ""; z.style.display = "none"; return; }
+  z.style.display = "";
+  const aide = {rapide: "plus rapide mais moins fiable", pousse: "plus lent et plus fiable"};
+  z.innerHTML = Object.entries(modes).map(([k, m]) =>
+    `<label class="${k === actif ? "actif" : ""}"><input type="radio" name="modeia" value="${k}" ${k === actif ? "checked" : ""}>
+      <span><b>${esc(m.nom)}</b><br><small>${esc(m.detail || m.modele)}, ${esc(aide[k] || "")}</small></span></label>`).join("");
+}
+function fournisseurActif(a){
+  const f = a?.fournisseurs || {};
+  return (choixIA && f[choixIA]?.disponible) ? choixIA : (a?.par_defaut || null);
+}
+function afficherEtatIA(a){
+  const f = a?.fournisseurs || {}, actif = fournisseurActif(a);
+  afficherModeIA(a);
+  $("#choixIA").innerHTML = ["claude", "codex", "api"].filter(n => f[n]).map(n => {
+    const x = f[n], cls = (n === actif ? "actif" : "") + (x.disponible ? "" : " indispo");
+    return `<label class="${cls}" title="${esc(x.detail || "")}"><input type="radio" name="ia" value="${n}" ${n === actif ? "checked" : ""} ${x.disponible ? "" : "disabled"}>
+      <span><b>${esc(x.nom)}</b><br><small>${x.disponible ? "prêt" : (n !== "api" ? (x.installe ? "pas connecté" : "non installé") : "clé absente")}</small></span></label>`;
+  }).join("");
+  const e = $("#etatIA");
+  if (actif){
+    const x = f[actif];
+    e.className = "etat-ia ok";
+    const m = (x.modes || {})[modeActif(a)];
+    e.innerHTML = `Assistant connecté : <span>${esc(x.nom)}${x.service ? ` (${esc(x.service)})` : ""}, ${m ? esc(m.detail || m.modele) : "modèle " + esc(x.modele)}</span>`;
+  } else {
+    const c = f.claude || {}, x = f.codex || {};
+    e.className = "etat-ia non";
+    e.innerHTML = `<b>Aucun assistant prêt.</b> <span>${c.installe ? esc(c.detail) : "Claude : installer puis connecter Claude Code (voir le README)."}
+      ${x.installe ? esc(x.detail) : "Ou Codex : installer puis connecter Codex CLI (« codex login »)."}
+      Ou une IA avec clé API : écrire <code>cle = …</code> dans <code>cle_api.txt</code> (dossier de l'outil). Puis cliquer à nouveau sur cet onglet.
+      En attendant, « Copier pour un chat externe » fonctionne.</span>`;
+  }
+}
+async function rafraichirEtatIA(){
+  try { const j = await (await fetch("/api/etat?rafraichir=1")).json(); R.assistant = j.assistant; afficherEtatIA(j.assistant); } catch { /* serveur arrêté : géré à l'envoi */ }
+}
+$("#choixIA").addEventListener("change", e => { if (e.target.name === "ia"){ choixIA = e.target.value; afficherEtatIA(R.assistant); } });
+$("#modeIA").addEventListener("change", e => { if (e.target.name === "modeia"){ modeIA = e.target.value; afficherEtatIA(R.assistant); } });
+function dessinerChat(attente = false, erreur = ""){
+  let h = conversation.map(m => m.role === "user" ? `<div class="msg user">${esc(m.content)}</div>`
+    : m.enCours && !m.content ? '<div class="msg attente">L\'assistant lit les données et commence sa réponse…</div>'
+    : `<div class="msg ia">${mdLeger(m.content)}${m.enCours ? '<span class="curseur">▍</span>' : ""}${m.meta ? `<div class="meta">${esc(m.meta)}</div>` : ""}</div>`).join("");
+  if (attente) h += '<div class="msg attente">L\'assistant lit les données et rédige sa réponse…</div>';
+  if (erreur) h += `<div class="msg erreur">${esc(erreur)}</div>`;
+  $("#chat").innerHTML = h;
+  const qs = (!R?.traduit ? [QUESTION_BLOQUE] : []).concat(QUESTIONS_TYPES);
+  $("#suggestions").innerHTML = conversation.length ? "" : qs.map(q => `<button type="button" data-q="${esc(q)}">${esc(q)}</button>`).join("");
+}
+function initAssistant(){ conversation = []; $("#question").value = ""; afficherEtatIA(R.assistant); dessinerChat(); }
+
+async function envoyerQuestion(q){
+  q = (q || "").trim(); if (!q || !R) return;
+  conversation.push({role: "user", content: q});
+  $("#question").value = ""; $("#btnEnvoyer").disabled = true;
+  const msg = {role: "assistant", content: "", meta: "", enCours: true};
+  const historique = conversation.map(({role, content}) => ({role, content}));
+  conversation.push(msg);
+  dessinerChat();
+  try{
+    const rep = await fetch("/api/chat/flux", {method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({jeton: R.jeton, fournisseur: fournisseurActif(R.assistant), mode: modeActif(R.assistant), messages: historique})});
+    if (!rep.ok || !rep.body){ const j = await rep.json().catch(() => ({})); throw new Error(j.erreur || "Erreur inconnue."); }
+    const lecteur = rep.body.getReader(), dec = new TextDecoder();
+    let tampon = "", fini = false;
+    while (!fini){
+      const {value, done} = await lecteur.read();
+      if (done) break;
+      tampon += dec.decode(value, {stream: true});
+      let i;
+      while ((i = tampon.indexOf("\n")) >= 0){
+        const ligne = tampon.slice(0, i).trim(); tampon = tampon.slice(i + 1);
+        if (!ligne) continue;
+        const ev = JSON.parse(ligne);
+        if (ev.erreur) throw new Error(ev.erreur);
+        if (ev.texte !== undefined){ msg.content += ev.texte; dessinerChat(); }
+        if (ev.fin){
+          const j = ev.fin;
+          msg.content = j.reponse; msg.enCours = false; fini = true;
+          const nomMode = (R.assistant?.fournisseurs?.[j.fournisseur]?.modes || {})[j.mode]?.nom || "";
+          msg.meta = `${NOMS_IA[j.fournisseur] || j.fournisseur}${nomMode ? " · " + nomMode : ""} · ${j.modele} · ${nb(j.duree, 1)} s${j.tokens ? " · " + nb(j.tokens) + " tokens" : ""}`;
+        }
+      }
+    }
+    if (!fini) throw new Error("La réponse a été interrompue. Réessayer.");
+    dessinerChat();
+  }catch(err){
+    conversation.pop();                              // réponse incomplète retirée
+    const q2 = conversation.pop().content;          // la question n'a pas eu de réponse : on la rend
+    $("#question").value = q2;
+    dessinerChat(false, err instanceof TypeError ? "Le serveur ne répond pas : relancer lancer_interface.bat." : err.message);
+  }finally{
+    $("#btnEnvoyer").disabled = false;
+  }
+}
+$("#formChat").addEventListener("submit", e => { e.preventDefault(); envoyerQuestion($("#question").value); });
+$("#question").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey){ e.preventDefault(); envoyerQuestion($("#question").value); } });
+$("#suggestions").addEventListener("click", e => { const b = e.target.closest("button[data-q]"); if (b) envoyerQuestion(b.dataset.q); });
+$("#btnEffacer").addEventListener("click", () => { conversation = []; dessinerChat(); });
+$("#btnInvite").addEventListener("click", async () => {
+  const derniere = $("#question").value.trim() || [...conversation].reverse().find(m => m.role === "user")?.content || "";
+  try{
+    const rep = await fetch("/api/invite", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({jeton: R.jeton, question: derniere})});
+    const j = await rep.json(); if (!rep.ok) throw new Error(j.erreur || "erreur");
+    try { await navigator.clipboard.writeText(j.texte); }
+    catch { const t = document.createElement("textarea"); t.value = j.texte; document.body.appendChild(t); t.select(); document.execCommand("copy"); t.remove(); }
+    toast(derniere ? "Données et question copiées : coller dans Claude.ai ou ChatGPT" : "Données copiées : coller dans Claude.ai ou ChatGPT, puis écrire la question à la fin");
+  }catch(err){ toast(err instanceof TypeError ? "Le serveur ne répond pas" : "Copie impossible : " + err.message); }
+});
+
+// ================= onglet « Comment fonctionne le traducteur » : exemple pris dans le fichier chargé =================
+const TYPES_EXEMPLE = ["action (étape)", "part (persona)", "requirement (besoin)", "part def (composant)", "use case def"];
+let trChoix = null;
+function remplirTraducteur(){
+  const z = $("#trExemple");
+  if (!R || !R.traduit || !R.trace_detail || !R.codes){ z.innerHTML = `<p class="vide">Disponible une fois le fichier traduit.</p>`; return; }
+  const L = R.trace_detail.filter(t => TYPES_EXEMPLE.includes(t.type_sysml));
+  if (!L.length){ z.innerHTML = `<p class="vide">Aucun élément à montrer.</p>`; return; }
+  const cle = t => t.onglet_excel + ":" + t.ligne_excel;
+  if (!L.some(t => cle(t) === trChoix)) trChoix = cle(L[0]);
+  const opts = TYPES_EXEMPLE.map(ty => {
+    const g = L.filter(t => t.type_sysml === ty); if (!g.length) return "";
+    return `<optgroup label="${esc(ty)}">` + g.map(t => `<option value="${esc(cle(t))}" ${cle(t) === trChoix ? "selected" : ""}>${esc(t.dans_excel)}</option>`).join("") + `</optgroup>`;
+  }).join("");
+  const t = L.find(x => cle(x) === trChoix);
+  const code = R.codes[t.code], lignes = code ? code.texte.split("\n") : [];
+  const n = t.ligne_sysml, de = Math.max(1, n - 3), a = Math.min(lignes.length, n + 12);
+  const extrait = lignes.slice(de - 1, a).map((l, k) => `<span class="${de + k === n ? "cible" : ""}"><i>${de + k}</i>${esc(l)}</span>`).join("");
+  const v = (R.verification || []).find(x => x.id === t.id && x.fichier === t.fichier) || (R.verification || []).find(x => x.id === t.id);
+  const crit = v ? `<ul class="tr-criteres">${v.criteres.map(c => `<li>${c.ok ? "✓" : "✗"} <b>${esc(c.nom)}</b> : ${c.ok ? "identique dans l'Excel et le SysML" : esc(c.ecart || "écart")}</li>`).join("")}</ul>` : "";
+  z.innerHTML = `<label>Élément : <select id="trSelect">${opts}</select></label>
+    <div class="tr-ex-grille">
+      <div><h4>1. Dans l'Excel</h4><dl><dt>Onglet</dt><dd><code>${esc(t.onglet_excel)}</code></dd><dt>Ligne</dt><dd>${nb(t.ligne_excel)}</dd><dt>Contenu</dt><dd>${esc(t.dans_excel)}</dd><dt>Identifiant</dt><dd class="id">${esc(t.id)}</dd></dl>
+        <h4 style="margin-top:14px">2. Traduit en</h4><dl><dt>Construction</dt><dd>${esc(t.type_sysml)}</dd><dt>Élément SysML</dt><dd><code>${esc(t.element_sysml)}</code></dd><dt>Fichier</dt><dd><code>${esc(t.fichier)}</code>, ligne ${nb(n)}</dd></dl>
+        ${v ? `<h4 style="margin-top:14px">3. Vérifié par la relecture ${v.ok ? '<span class="tag ok">conforme</span>' : '<span class="tag err">écart</span>'}</h4>${crit}` : ""}</div>
+      <div><h4>Extrait du code (ligne ${nb(n)} surlignée)</h4><pre class="tr-code">${extrait}</pre></div>
+    </div>`;
+  $("#trSelect").addEventListener("change", e => { trChoix = e.target.value; remplirTraducteur(); });
+}
+// ================= retour à la section d'origine (après un lien vers le code ou un lien de l'assistant) =================
+let RETOUR = null;            // {de: section d'origine, y: défilement, el: élément cliqué, cible: section ouverte}
+function sectionActive(){ return document.querySelector(".onglets button.actif")?.dataset.p || "tableau"; }
+function memoriserRetour(cible, el){
+  const de = sectionActive();
+  if (de === cible) return;
+  RETOUR = {de, y: scrollY, el, cible};
+  const b = $("#retour"); b.textContent = "← Retour à " + nomSection(de); b.hidden = false;
+}
+function cacherRetour(){ RETOUR = null; $("#retour").hidden = true; }
+$("#retour").addEventListener("click", () => {
+  if (!RETOUR) return;
+  const {de, y, el} = RETOUR; cacherRetour();
+  ouvrir(de, false);
+  requestAnimationFrame(() => {
+    scrollTo({top: y});
+    if (el && el.isConnected){ el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); }
+  });
+});
+// liens de l'assistant : section, puis vue dans la section
+function allerVue(p, v, nom){
+  if (p === "modele" && nom){                        // élément précis : le lecteur ouvre sa vue et le sélectionne
+    let n = 0;
+    const essayer = () => {
+      const r = vueModele?.montrer ? vueModele.montrer(nom, v) : false;
+      if (r === false && ++n < 50) return setTimeout(essayer, 100);      // le modèle se charge à l'ouverture
+      if (r !== true){ toast(`« ${nom} » introuvable dans le modèle.`); if (v) allerVue(p, v); }
+    };
+    return essayer();
+  }
+  if (p === "verif" && nom){                         // vérification : vue demandée + recherche sur le nom
+    if (v) $(`#vueVerif [data-v="${v}"]`)?.click();
+    const q = $("#rechercheVerif"); q.value = nom; q.dispatchEvent(new Event("input"));
+    return;
+  }
+  const sel = {verif: `#vueVerif [data-v="${v}"]`, matrice: `#vueAnalyses [data-analyse="${v}"]`, modele: `#modeleZone [data-vue="${v}"]`}[p];
+  if (!v || !sel) return;
+  let n = 0;
+  const essayer = () => { const b = $(sel); if (b) b.click(); else if (++n < 30) setTimeout(essayer, 100); };   // le modèle se charge à l'ouverture
+  essayer();
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-aller-ia]"); if (!b) return;
+  const p = b.dataset.allerIa, bouton = document.querySelector(`.onglets [data-p="${p}"]`);
+  if (!bouton || bouton.disabled){ toast("Cette section n'est pas disponible pour ce fichier."); return; }
+  memoriserRetour(p, b.closest(".msg") || b);
+  allerA(p); allerVue(p, b.dataset.sous, b.dataset.nom);
+});
+// ================= onglets & résumé =================
+function ouvrir(p, defiler = true){
+  const b = document.querySelector(`.onglets [data-p="${p}"]`);
+  if (!b || b.disabled) return;
+  if (RETOUR && p !== RETOUR.cible) cacherRetour();
+  $$(".onglets button").forEach(x => x.classList.toggle("actif", x === b));
+  $$(".panneau").forEach(s => s.classList.toggle("actif", s.id === "p-" + p));
+  if (p === "assistant") rafraichirEtatIA();
+  if (p === "traducteur") remplirTraducteur();
+  if (p === "modele" && !modeleMonte && window.RMonieModele){ modeleMonte = true; vueModele = RMonieModele.monter($("#modeleZone"), {jeton: R.jeton, pleinEcran: true}); }
+  if (defiler) $("#ancreOnglets").scrollIntoView({behavior: "smooth", block: "start"});
+}
+$("#onglets").addEventListener("click", e => { const b = e.target.closest("button"); if (b && !b.disabled) ouvrir(b.dataset.p, false); });
+$("#resume").addEventListener("click", e => {
+  if (e.target.closest("[data-copier]")){ e.stopPropagation(); copier(); return; }
+  const c = e.target.closest("[data-aller]"); if (c) ouvrir(c.dataset.aller);
+});
+$("#resume").addEventListener("keydown", e => {
+  const c = e.target.closest("[data-aller]");
+  if (c && (e.key === "Enter" || e.key === " ") && !e.target.closest("[data-copier]")){ e.preventDefault(); ouvrir(c.dataset.aller); }
+});
+</script>
+<!-- ================= animations (GSAP, copie locale) =================
+     Couche d'apparence seulement : elle se branche autour de afficher, ouvrir et dessinerChat
+     sans rien changer à ce qu'elles font. Un seul mouvement sans action de l'utilisateur :
+     le trait en U de l'accueil, au chargement. Le reste répond à un clic ou au dépôt d'un fichier.
+     Si GSAP ne se charge pas, la page marche comme avant.
+     « Réduire les animations » (Windows / navigateur) est respecté : aucun mouvement. -->
+<script src="/modele.js"></script>
+<script src="/outils.js"></script>
+<script src="/analyses.js"></script>
+<script>
+  // onglet « Analyses » : la matrice (index.html) et trois graphes lus dans les codes SysML (analyses.js)
+  $("#vueAnalyses").addEventListener("click", e => {
+    const b = e.target.closest("[data-analyse]"); if (!b || !R) return;
+    $$("#vueAnalyses button").forEach(x => x.classList.toggle("actif", x === b));
+    const matrice = b.dataset.analyse === "matrice";
+    $("#analyseMatrice").hidden = !matrice; $("#analyseAutre").hidden = matrice;
+    if (!matrice && window.RMonieAnalyses) RMonieAnalyses.afficher($("#analyseAutre"), b.dataset.analyse, {jeton: R.jeton});
+  });
+</script>
+<script>
+// ================= mode application : tableau de bord, menu latéral, Précédent / Suivant =================
+// Couche d'organisation seulement : elle réutilise les fonctions de la page (ouvrir, exporter, copier,
+// téléchargements...) sans rien changer à ce qu'elles font.
+const ORDRE_SECTIONS = ["tableau", "controles", "verif", "apercu", "modele", "matrice", "export", "assistant", "traducteur"];
+const COULEURS_UC = ["#6E1734", "#1F5F8B", "#2E7D4F", "#8A5A00", "#5B3F8C", "#00727A", "#9C3D1C", "#3B5B1F"];
+function nomSection(p){ const b = document.querySelector(`.onglets [data-p="${p}"] .lib`); return b ? b.textContent : p; }
+function allerA(p){
+  ouvrir(p, false);
+  const haut = $(".appli").getBoundingClientRect().top + scrollY - 12;
+  if (scrollY > haut) scrollTo({top: haut, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"});
+}
+// boutons Précédent / Suivant en bas de chaque section (cible désactivée = on la saute)
+function pieds(){
+  ORDRE_SECTIONS.forEach((p, i) => {
+    const s = $("#p-" + p); if (!s) return;
+    s.querySelector(".pied-panneau")?.remove();
+    const actifs = ORDRE_SECTIONS.filter(x => !document.querySelector(`.onglets [data-p="${x}"]`)?.disabled);
+    const k = actifs.indexOf(p); if (k < 0) return;
+    const av = actifs[k - 1], ap = actifs[k + 1];
+    const d = document.createElement("nav");
+    d.className = "pied-panneau"; d.setAttribute("aria-label", "Section précédente ou suivante");
+    d.innerHTML = (av ? `<button data-aller-section="${av}"><small>Précédent</small>← ${esc(nomSection(av))}</button>` : "")
+                + (ap ? `<button class="suivant" data-aller-section="${ap}"><small>Suivant</small>${esc(nomSection(ap))} →</button>` : "");
+    s.append(d);
+  });
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-aller-section]"); if (b){ allerA(b.dataset.allerSection); return; }
+  const a = e.target.closest("#p-tableau [data-aller]"); if (a && !a.closest("#resume")){ allerA(a.dataset.aller); return; }
+  const n = e.target.closest("#onglets button"); if (n && !n.disabled) allerA(n.dataset.p);
+});
+
+function tableauDeBord(){
+  $("#tbSous").innerHTML = R.traduit
+    ? `Où en est la traduction de <b>${esc(R.fichier)}</b>, et par où continuer. Commencez par les étapes 1 à 3 ci-dessous.`
+    : `<b>${esc(R.fichier)}</b> : aucun code produit. Corrigez d'abord les erreurs bloquantes (étape 1).`;
+  // cas d'usage et leurs codes
+  const A = R.apercu, C = R.codes || [];
+  $("#tbCas").innerHTML = !A ? '<p class="note">Pas de modèle : corriger d\'abord les erreurs bloquantes.</p>'
+    : `<div class="tb-cas">${A.cas_usage.map((u, k) => {
+        const codes = C.map((c, i) => ({c, i})).filter(x => x.c.numero === k + 1);
+        const max = Math.max(0, ...codes.map(x => x.c.taille_catia)), pc = Math.min(100, Math.round(100 * max / R.limite));
+        const parts = codes.length > 1 ? `${codes.length} codes (coupé en parties)` : `1 code`;
+        return `<div class="tb-uc" style="--c:${COULEURS_UC[k % COULEURS_UC.length]}">
+          <b>${k + 1}. ${esc(u.nom)}</b>
+          <span class="meta">${pluriel(u.etapes.length, "étape", "étapes")} · ${parts} · ${nb(max)} / ${nb(R.limite)} caractères</span>
+          <div class="tb-jauge" title="Taille du plus gros code de ce cas d'usage, sur la limite de CATIA Community"><i style="width:${pc}%;background:${pc > 100 ? "var(--err)" : "var(--ok)"}"></i></div>
+          <div class="acteurs">${u.acteurs.map(a => `<span>${esc(a)}</span>`).join("") || '<span>aucun acteur</span>'}</div>
+          <div class="boutons">${codes.length ? `<button data-voir-code="${codes[0].i}">Code SysML</button>` : ""}<button data-voir-uc="${esc(u.id)}">Étapes</button></div>
+        </div>`;}).join("")}</div>`;
+  // couverture des besoins
+  if (A){
+    const B = [...A.besoins].sort((x, y) => y.nb_etapes - x.nb_etapes), max = Math.max(1, ...B.map(b => b.nb_etapes));
+    const couverts = B.filter(b => b.nb_etapes).length;
+    $("#tbBesoins").innerHTML = `<div class="tb-synthese"><b>${couverts}/${B.length}</b><span>besoins satisfaits par au moins une étape</span></div>
+      <div class="tb-barres">${B.map(b => `<div class="tb-barre ${b.nb_etapes ? "" : "zero"}" title="${esc(b.nom)} : ${b.nb_etapes} étape(s)">
+        <span class="n">${b.nb_etapes ? "" : "⚠ "}${esc(b.nom)}</span>
+        <span class="tb-jauge"><i style="width:${100 * b.nb_etapes / max}%;background:#2a78d6"></i></span><span class="v">${b.nb_etapes}</span></div>`).join("")}</div>`;
+  } else $("#tbBesoins").innerHTML = '<p class="note">Pas de modèle.</p>';
+  // contrôles et vérification : l'essentiel des preuves, puis les problèmes s'il y en a
+  const rang = p => p.bloque ? 0 : p.gravite === "erreur" ? 1 : 2;
+  const P = [...R.problemes].sort((a, b) => rang(a) - rang(b));
+  const V = R.verification || [], okV = V.filter(v => v.ok).length;
+  const att = R.couverture.reduce((s, l) => s + l.attendus, 0), tr = R.couverture.reduce((s, l) => s + l.trouves, 0);
+  const ce = R.code_entier;
+  const ligne = (etat, texte, valeur, aller) => `<li><span class="s ${etat}">${etat === "ok" ? "✓" : etat === "err" ? "✕" : "!"}</span>
+    <span>${aller ? `<a data-aller="${aller}">${texte}</a>` : texte}</span><span class="v">${valeur}</span></li>`;
+  const nbBloq = P.filter(p => p.bloque).length, nbErr = P.filter(p => p.gravite === "erreur").length;
+  const checks = `<ul class="tb-checks">
+    ${ligne(nbBloq ? "err" : nbErr || P.length ? "att" : "ok", "Contrôles des données (schéma UserShaker)", P.length ? pluriel(P.length, "point", "points") : "aucun problème", "controles")}
+    ${R.traduit ? ligne(okV === V.length ? "ok" : "err", "Éléments relus dans les codes, conformes à l'Excel", `${nb(okV)}/${nb(V.length)}`, "verif") : ""}
+    ${R.traduit ? ligne(tr === att ? "ok" : "err", "Lignes de l'Excel retrouvées dans les codes", `${nb(tr)}/${nb(att)}`, "export") : ""}
+    ${ce ? ligne(ce.verification_ok === ce.verification_total ? "ok" : "err", "Code entier (CATIA complet) relu", `${nb(ce.verification_ok)}/${nb(ce.verification_total)}`, null) : ""}
+    ${R.traduit ? ligne("ok", "Non traduit : images, couleurs, champs de bibliothèque et infos d'export (restent dans l'Excel)", "", "export") : ""}
+  </ul>`;
+  $("#tbProblemes").innerHTML = checks + (!P.length ? ""
+    : `<ul class="tb-pbs">${P.slice(0, 5).map(p => `<li><span class="tag ${p.bloque ? "bloq" : p.gravite === "erreur" ? "err" : "att"}">${p.bloque ? "bloquant" : esc(p.gravite)}</span>
+        <span>${esc(p.message)}${p.onglet ? ` <span class="note">(${esc(p.onglet)}${p.ligne ? ", ligne " + p.ligne : ""})</span>` : ""}</span></li>`).join("")}</ul>
+      ${P.length > 5 ? `<p class="note" style="margin:10px 0 0">… et ${P.length - 5} autre(s).</p>` : ""}`);
+  // fichier bloqué : seules les cartes utiles restent (les autres mènent à des sections désactivées)
+  $("#tbCas").closest(".tb-carte").hidden = !R.traduit;
+  $("#tbBesoins").closest(".tb-carte").hidden = !R.traduit;
+  $("#tbProblemes").closest(".tb-carte").classList.toggle("tb-large", !R.traduit);
+  $("#tbProblemes").closest(".tb-carte").querySelector(".tb-lien").hidden = !R.traduit;
+  // actions rapides
+  const act = (id, i, t, s, ok = true) => ok ? `<button data-action-tb="${id}"><span class="i">${i}</span>${t}<small>${s}</small></button>` : "";
+  $("#tbActions").innerHTML = R.traduit ? [
+    act("export", "⇩", "Copier les codes pour CATIA", "un code par cas d'usage (Community)"),
+    act("entier", "▣", "Code entier", "un seul code, CATIA Magic complet", !!R.code_entier),
+    act("zip", "⬇", "Tous les codes (.zip)", "codes, traçabilité et rapport"),
+    act("trace", "⇄", "Traçabilité (.xlsx)", "chaque ligne de l'Excel dans les codes"),
+    act("modele", "⌘", "Voir le modèle SysML", "diagrammes lus dans les codes"),
+    act("ia", "✦", "Poser une question à l'IA", "sur le modèle et ses codes"),
+  ].join("") : act("controles", "✓", "Voir les erreurs bloquantes", "à corriger dans UserShaker");
+}
+document.addEventListener("click", e => {
+  const a = e.target.closest("[data-action-tb]");
+  if (a){
+    const x = a.dataset.actionTb;
+    if (x === "export"){ versionCatia = "community"; exporter(); allerA("export"); }
+    else if (x === "entier"){ versionCatia = "complete"; E.code = 0; exporter(); allerA("export"); }
+    else if (x === "zip") $("#btnZip").click();
+    else if (x === "trace") $("#btnTrace").click();
+    else if (x === "modele") allerA("modele");
+    else if (x === "ia"){ allerA("assistant"); setTimeout(() => $("#question").focus(), 350); }
+    else allerA(x);
+    return;
+  }
+  const c = e.target.closest("[data-voir-code]");
+  if (c){ versionCatia = "community"; E.code = +c.dataset.voirCode; exporter(); allerA("export"); return; }
+  const u = e.target.closest("[data-voir-uc]");
+  if (u){ allerA("apercu"); setTimeout(() => document.getElementById("uc-" + u.dataset.voirUc)?.scrollIntoView({behavior: "smooth", block: "start"}), 300); }
+});
+const afficherBase = afficher;
+afficher = function(){
+  document.body.classList.add("app");
+  afficherBase();
+  tableauDeBord();
+  pieds();
+  scrollTo({top: 0});
+};
+</script>
+<script src="/lib/gsap.min.js"></script>
+<script src="/lib/ScrollTrigger.min.js"></script>
+<script>
+(() => {
+  if (!window.gsap || !window.ScrollTrigger) return;              // pas de GSAP : page normale
+  gsap.registerPlugin(ScrollTrigger);
+  const calme = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const sur = f => { try { f(); } catch (e) { console.warn("animation ignorée :", e); } };   // une animation ne doit jamais casser la page
+  const DOUX = "power3.out";
+
+  // ---------- barre d'onglets : trait sous l'onglet actif qui glisse ----------
+  const nav = $("#onglets");
+  const trait = document.createElement("span");
+  trait.className = "indicateur";
+  nav.appendChild(trait);
+  nav.classList.add("indic");
+  function placerTrait(anime){
+    const b = nav.querySelector("button.actif");
+    if (!b || !b.offsetWidth) return;
+    const lateral = getComputedStyle(nav).flexDirection === "column";
+    const v = lateral ? {x: 0, y: b.offsetTop + 6, width: 3, height: b.offsetHeight - 12}
+                      : {x: b.offsetLeft, y: b.offsetTop + b.offsetHeight - 2, width: b.offsetWidth, height: 2};
+    if (anime && !calme()) gsap.to(trait, {...v, duration: .35, ease: DOUX, overwrite: "auto"});
+    else gsap.set(trait, v);
+  }
+  addEventListener("resize", () => placerTrait(false));
+
+  // ---------- barre collée en haut : légère ombre sous la barre ----------
+  const colle = st => nav.classList.toggle("colle", st.scroll() > st.start);   // vrai aussi tout en bas de la page
+  ScrollTrigger.create({trigger: "#ancreOnglets", start: "top top", end: "max",
+                        onToggle: colle, onUpdate: colle, onRefresh: colle});
+
+  // ---------- changement d'onglet : fondu court du panneau ----------
+  const ouvrirAvant = ouvrir;
+  ouvrir = function(p, defiler = true){
+    const avant = $(".panneau.actif");
+    ouvrirAvant(p, defiler);
+    sur(() => {
+      placerTrait(true);
+      const apres = $(".panneau.actif");
+      if (apres && apres !== avant && !calme())
+        gsap.fromTo(apres, {autoAlpha: 0, y: 6}, {autoAlpha: 1, y: 0, duration: .28, ease: DOUX, overwrite: true, clearProps: "transform,opacity,visibility"});
+      ScrollTrigger.refresh();
+    });
+  };
+
+  // ---------- arrivée des résultats ----------
+  function compter(el, duree){
+    // fait défiler le premier nombre du texte (ex. « 62 » dans « 62/62 conformes ») ; le texte final est remis à l'identique
+    const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    let n;
+    while ((n = w.nextNode()) && !/\d/.test(n.nodeValue));
+    if (!n) return;
+    const texte = n.nodeValue, m = /^(\D*?)(\d[\d\s  ]*\d|\d)(.*)$/s.exec(texte);
+    if (!m) return;
+    const cible = +m[2].replace(/\D/g, "");
+    if (!(cible > 1)) return;
+    const o = {v: 0};
+    gsap.to(o, {v: cible, duration: duree, ease: "power2.out",
+      onUpdate: () => { n.nodeValue = m[1] + nb(Math.round(o.v)) + m[3]; },
+      onComplete: () => { n.nodeValue = texte; }});
+  }
+  let entree = null;
+  const afficherAvant = afficher;
+  afficher = function(){
+    afficherAvant();
+    sur(() => {
+      placerTrait(false);
+      ScrollTrigger.refresh();
+      if (calme()) return;
+      if (entree) entree.progress(1).kill();
+      const cartes = $$("#resume .etape-resume"), jauges = $$("#resume .jauge i");
+      entree = gsap.timeline({defaults: {ease: DOUX}})
+        .fromTo(["#barreFichier", "#bandeau"], {autoAlpha: 0, y: -8}, {autoAlpha: 1, y: 0, duration: .35, stagger: .06, clearProps: "transform,opacity,visibility"})
+        .fromTo(cartes, {autoAlpha: 0, y: 16, scale: .98}, {autoAlpha: 1, y: 0, scale: 1, duration: .5, stagger: .09, clearProps: "transform,opacity,visibility"}, "-=.15")
+        .fromTo(jauges, {scaleX: 0}, {scaleX: 1, transformOrigin: "left center", duration: .9, ease: "power2.out", clearProps: "transform"}, "-=.3")
+        .fromTo(["#compteurs", "#onglets"], {autoAlpha: 0, y: 8}, {autoAlpha: 1, y: 0, duration: .4, stagger: .05, clearProps: "transform,opacity,visibility"}, "-=.7");
+      cartes.forEach(c => { const v = c.querySelector(".valeur"); if (v) compter(v, .9); });
+      $$("#compteurs b").forEach(b => compter(b, .9));
+    });
+  };
+
+  // ---------- sections de vérification qui s'ouvrent en douceur (seulement au clic) ----------
+  let clicSommaire = 0;
+  document.addEventListener("pointerdown", e => { if (e.target.closest("details.groupe > summary")) clicSommaire = Date.now(); }, true);
+  document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.closest?.("details.groupe > summary")) clicSommaire = Date.now(); }, true);
+  document.addEventListener("toggle", e => {
+    const d = e.target;
+    if (!d.matches?.("details.groupe") || !d.open || Date.now() - clicSommaire > 600 || calme()) return;
+    sur(() => {
+      const corps = [...d.children].filter(x => x.tagName !== "SUMMARY");
+      gsap.fromTo(corps, {autoAlpha: 0, y: -6}, {autoAlpha: 1, y: 0, duration: .3, ease: DOUX, stagger: .04, overwrite: true, clearProps: "transform,opacity,visibility"});
+      ScrollTrigger.refresh();
+    });
+  }, true);
+
+  // ---------- bulles de l'assistant : seule une nouvelle bulle apparaît en douceur ----------
+  let nbBulles = 0;
+  const chatAvant = dessinerChat;
+  dessinerChat = function(...args){
+    chatAvant(...args);
+    sur(() => {
+      const bulles = $$("#chat .msg");
+      if (bulles.length > nbBulles && !calme())
+        gsap.from(bulles.slice(nbBulles), {autoAlpha: 0, y: 10, scale: .98, transformOrigin: "bottom left", duration: .3, ease: DOUX, stagger: .06, clearProps: "transform,opacity,visibility"});
+      nbBulles = bulles.length;
+    });
+  };
+
+  // ---------- accueil : le trait en U relie la ligne de l'Excel à la ligne de SysML (une fois, au chargement) ----------
+  sur(() => {
+    const f = $("#preuve"), p = $("#traitU"), ligne = $("#preuveLigne"), code = $("#preuveCode");
+    if (!f || !f.offsetParent || calme()) return;
+    tracerU();
+    const L = p.getTotalLength();
+    if (!(L > 0)) return;
+    ligne.classList.remove("allume"); code.classList.remove("allume");
+    gsap.set(p, {strokeDasharray: L, strokeDashoffset: L});
+    gsap.set(["#boutA", "#boutB"], {scale: 0, transformOrigin: "50% 50%"});
+    gsap.set("#verdictPreuve", {autoAlpha: 0});
+    gsap.timeline({delay: .4, onComplete: () => {
+        gsap.set(p, {clearProps: "strokeDasharray,strokeDashoffset"});
+        gsap.set(["#boutA", "#boutB"], {clearProps: "transform"});
+      }})
+      .call(() => ligne.classList.add("allume"), null, 0)
+      .to("#boutA", {scale: 1, duration: .3, ease: "power2.out"}, 0)
+      .to(p, {strokeDashoffset: 0, duration: 1, ease: "power2.inOut"}, .25)
+      .to("#boutB", {scale: 1, duration: .25, ease: "power2.out"}, 1.15)
+      .call(() => code.classList.add("allume"), null, 1.15)
+      .to("#verdictPreuve", {autoAlpha: 1, duration: .4, ease: DOUX, clearProps: "opacity,visibility"}, 1.45);
+  });
+})();
+</script>
+</body>
+</html>

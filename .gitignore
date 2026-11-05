@@ -1,0 +1,21 @@
+# Clé API de l'assistant IA : ne jamais versionner
+cle_api.txt
+cle_groq.txt
+.env
+
+# Résultats de traduction
+sortie/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Fichiers de travail (exports clients)
+*.xlsx
+
+# Systèmes
+.DS_Store
+Thumbs.db
+desktop.ini
